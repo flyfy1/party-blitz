@@ -1,186 +1,221 @@
-# PARTY BLITZ：Claude SG × Supabase Hackathon
+# Party Blitz
 
-这份 README 记录了**设计背后的讨论过程和决策理由**，方便 reviewer 了解为什么这样设计。
+A party game for a lecture hall: up to **120 phones**, **one big screen**, **zero game servers**. Everyone scans a QR code and is split into **three factions** (Lava / Ocean / Forest). Each round is a **15-second mini-game**; the result moves three mascots along a board on the big screen. Phones send input through **Supabase Postgres RPC**; the big screen is the only referee and pushes two **Realtime Broadcast** messages per round. Built live with **Claude Code** at the Claude SG × Supabase hackathon, Singapore, 2 Nov 2026.
 
-| 文件 | 内容 |
+## Docs
+
+| File | Content |
 |---|---|
-| `README.md` | 背景、考虑过的方案、关键决策和理由、未验证的假设、改进记录（本文） |
-| `DESIGN.md` | 完整设计：玩法、计分、数据模型、RPC、Realtime 事件、视觉、测试、开发阶段 |
-| `BUILD_PROMPT.md` | 开场后直接粘贴给 Claude Code 的 prompt |
-| `.history/` | 每一轮改写前的旧版本，方便对照 |
+| [`README.zh.md`](README.zh.md) | Chinese original of this file: background, alternatives considered, key decisions, unverified assumptions, change log |
+| [`DESIGN.md`](DESIGN.md) / [`DESIGN.en.md`](DESIGN.en.md) | Full design spec (v2): gameplay, scoring, data model, RPCs, Realtime events, visuals, tests, build phases |
+| [`BUILD_PROMPT.md`](BUILD_PROMPT.md) / [`BUILD_PROMPT.en.md`](BUILD_PROMPT.en.md) | The prompt pasted into Claude Code at the start of the build |
+| [`app/SUPABASE.md`](app/SUPABASE.md) / [`app/SUPABASE.en.md`](app/SUPABASE.en.md) | Live Supabase project: credentials layout, RPC list, how to apply schema changes, measured latency |
+| [`CLAUDE.md`](CLAUDE.md) | Working conventions for the AI agents editing this repo in parallel |
+
+The Chinese files are the source of truth where they differ from the English translations.
+
+## Quick start
+
+All commands run from `app/`:
+
+```bash
+npm run dev        # local dev server
+npm run build      # tsc -b && vite build — must pass before every commit
+npm test           # vitest (scoring tests etc.)
+npm run lint       # oxlint
+npm run smoke      # end-to-end check against the live Supabase project
+npm run loadtest   # N simulated Realtime clients + RPC submissions, latency report
+npm run deploy     # build + vercel deploy dist --prod
+```
+
+Two URLs, one entry point, no router library:
+
+- Phone: `/?g=<game_id>`
+- Big screen: `/?screen=1&g=<game_id>&key=<host_key>`
+
+Environment (`app/.env`, git-ignored):
+
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<publishable key>
+```
+
+Database: paste `app/supabase/migrations/001_init.sql` into the Supabase SQL Editor and run it. The migration is re-runnable (`create table if not exists` / `create or replace function`). If a call then fails with "Could not find the function ... in the schema cache", run `notify pgrst, 'reload schema'` and retry.
 
 ---
 
-## 1. 活动背景
+The rest of this file is an English translation of `README.zh.md`, which records **the discussion behind the design and the reasons for each decision**, so a reviewer can see why it was built this way.
 
-- **活动**：Claude SG × Supabase「Build with Claude and Supabase」（https://luma.com/ClaudesgXsupabase）
-- **时间和地点**：2026-11-02（周一）18:30 – 约 20:30，新加坡 Lifelong Learning Institute 二楼讲堂
-- **形式**：先做 Supabase 简介，然后**大约 1 小时现场开发**，带一点比赛性质
-- **规模**：报名 337 人，场地是**大讲堂**，有大屏幕
-- **要求**：用 Claude（Claude Code Pro 及以上）和 Supabase 做出一个 app
-- **奖品**：MacBook、iPad、AirPods Pro、Supabase 周边
-- **活动页没有写明的**：评分标准、demo 时长、组队规则。这些都要在现场确认
+## 1. Event background
 
-## 2. 目标
+- **Event**: Claude SG × Supabase "Build with Claude and Supabase" (https://luma.com/ClaudesgXsupabase)
+- **When and where**: 2026-11-02 (Monday) 18:30 – about 20:30, Lifelong Learning Institute, Singapore, 2nd-floor lecture theatre
+- **Format**: a Supabase introduction first, then **about 1 hour of live development**, with a light competition element
+- **Scale**: 337 registered, the venue is a **large lecture theatre** with a big screen
+- **Requirement**: build an app with Claude (Claude Code Pro or above) and Supabase
+- **Prizes**: MacBook, iPad, AirPods Pro, Supabase swag
+- **Not stated on the event page**: judging criteria, demo length, team rules. All to be confirmed on site
 
-用户的原话是：demo 时要有 **wow effect**；最好是 **realtime、大家一起玩的游戏**；**竞技类型**；**容易上手**；**每个人都不会觉得无聊**。
+## 2. Goals
 
-后续讨论中补充的要求：
-- 分成**三个阵营**，进来的人**自动分配**
-- 效果类似派对游戏：**每个人用自己的手机操作，大屏动态显示得分和效果**
-- 每局只有 **15 秒**，节奏要非常快
-- **游戏内容提前设计好，不接 AI**；但**画面一定要足够有趣、有吸引力**
-- 玩家上限设为 **120 人**
+The user's own words: the demo needs a **wow effect**; ideally a **realtime game everyone plays together**; **competitive**; **easy to pick up**; **nobody gets bored**.
+
+Requirements added in later discussion:
+- Split into **three factions**; people are **assigned automatically** on joining
+- Party-game feel: **everyone plays on their own phone, the big screen shows scores and effects live**
+- Each round is only **15 seconds**; the pace has to be very fast
+- **Game content is designed in advance, no AI in the game**; but **the visuals must be fun and attractive enough**
+- Player cap set to **120**
 
 ---
 
-## 3. 讨论过的方案和取舍
+## 3. Alternatives discussed and trade-offs
 
-| # | 方案 | 结论 | 理由 |
+| # | Option | Verdict | Reason |
 |---|---|---|---|
-| 1 | **全场拔河 + Claude 解说**（两队狂点） | ❌ 放弃 | 团队对抗中个人的影响太小，玩几十秒后大家会觉得自己点不点都一样；也不够"竞技" |
-| 2 | **全场心理战**（少数派、猜平均数的 2/3、拼手速，由 Claude 当主持人） | 🔄 部分保留 | 规则简单、消息频率低。其中"少数派"保留成了一个小游戏 |
-| 3 | **三阵营版心理战**（加上阵营石头剪刀布、队长角色） | 🔄 部分保留 | 三阵营的设计和阵营猜拳保留了下来；队长角色因为时间不够放弃 |
-| 4 | **改造现有的 snake-arena**（`~/Documents/integ-life/snake-arena`，Go + WebSocket 实时贪吃蛇）成三阵营，Supabase 只负责跨房间的全场汇总 | ❌ 放弃 | 见下方说明 |
-| 5 | **三阵营派对棋盘**：手机当手柄，大屏是舞台，每轮 15 秒小游戏，结果决定棋子前进的格数 | ✅ **最终方案** | 竞技感、上手门槛、画面效果和 1 小时的可行性之间平衡得最好 |
+| 1 | **Whole-room tug of war + Claude commentary** (two teams mashing) | ❌ Dropped | In a team contest one person's influence is too small; after a few dozen seconds everyone feels their taps don't matter; also not "competitive" enough |
+| 2 | **Whole-room mind games** (minority vote, guess 2/3 of the average, reaction speed, with Claude as host) | 🔄 Partly kept | Simple rules, low message rate. "Minority" survived as one mini-game |
+| 3 | **Three-faction mind games** (adding faction rock-paper-scissors and a captain role) | 🔄 Partly kept | The three-faction design and faction RPS stayed; the captain role was dropped for lack of time |
+| 4 | **Adapt the existing snake-arena** (`~/Documents/integ-life/snake-arena`, Go + WebSocket realtime snake) into three factions, with Supabase only aggregating across rooms | ❌ Dropped | See below |
+| 5 | **Three-faction party board**: phones as controllers, big screen as the stage, a 15-second mini-game each round whose result decides how many squares the pieces advance | ✅ **Final choice** | Best balance of competitiveness, low barrier to entry, visual effect and feasibility within 1 hour |
 
-**为什么放弃 snake-arena**
-- 这个项目已经开发了好几个月（四种模式、AI 蛇、预测和和解）。**拿到"1 小时现场开发"的比赛里很容易被质疑**，这是最致命的问题
-- 红蓝对抗模式是写死两队的（`pickTeam`、`teamScores() (blue, red)`、配色、前端记分牌），改成三队要动很多地方
-- 每个房间最多 20 人（`maxPlayers = 20`），容纳全场需要多开房间，还要另外做一层 Supabase 汇总
-- 生产环境跑在家里的 Raspberry Pi 上，全场同时玩会受上行带宽和 CPU 限制（没有实测），demo 必须另外准备一台云主机
-- Supabase 在这个方案里只是辅助角色，评委不容易看出它的作用
-- 15Hz 的游戏状态同步**不能用 Supabase Realtime 来做**，详见第 4 节
+**Why snake-arena was dropped**
+- That project has been in development for months (four modes, AI snakes, prediction and reconciliation). **Bringing it to a "1 hour live build" contest invites suspicion**; this is the fatal problem
+- The red-vs-blue mode hard-codes two teams (`pickTeam`, `teamScores() (blue, red)`, colours, frontend scoreboard); going to three teams touches a lot of places
+- Each room holds at most 20 players (`maxPlayers = 20`); covering the room means multiple rooms plus a separate Supabase aggregation layer
+- Production runs on a Raspberry Pi at home; the whole room playing at once would be limited by upstream bandwidth and CPU (not measured), so the demo would need a separate cloud host
+- Supabase would only be a supporting actor, and judges would struggle to see its role
+- 15 Hz game-state sync **cannot be done over Supabase Realtime**, see section 4
 
-**为什么去掉 AI（Claude 主持）**
-- 用户决定内容提前设计好，不在游戏里调用 AI
-- 好处：少一个外部依赖和延迟来源（Claude 加 Edge Function 冷启动大约要 1–3 秒，会打乱 15 秒的节奏），也不需要部署 Edge Function 和管理 API key
-- 活动要求的"用 Claude 来 build"已经由 Claude Code 满足了
+**Why the AI (Claude as host) was removed**
+- The user decided the content is designed in advance and the game does not call an AI
+- Benefit: one fewer external dependency and latency source (Claude plus an Edge Function cold start is roughly 1–3 seconds, which would break the 15-second rhythm); no Edge Function to deploy and no API key to manage
+- The event's "build with Claude" requirement is already satisfied by Claude Code
 
 ---
 
-## 4. Supabase 的能力和限制（影响架构的关键事实）
+## 4. Supabase capabilities and limits (the facts that shaped the architecture)
 
-**延迟**（来源：supabase.com/docs/guides/realtime/benchmarks，在 AWS 内网测得，没有包含手机和场馆 WiFi 的网络开销）
+**Latency** (source: supabase.com/docs/guides/realtime/benchmarks, measured inside the AWS network, excluding phone and venue WiFi overhead)
 
-| 方式 | 中位数 | p95 |
+| Method | Median | p95 |
 |---|---|---|
 | Broadcast | 6ms | 28ms |
-| Broadcast，1KB payload | 13ms | 36ms |
-| 从数据库触发 Broadcast | 46ms | 132ms |
-| Postgres Changes（小实例） | 未公布 | 约 240ms，客户端多时会超过 1 秒 |
+| Broadcast, 1KB payload | 13ms | 36ms |
+| Broadcast triggered from the database | 46ms | 132ms |
+| Postgres Changes (small instance) | not published | about 240ms, exceeds 1 second with many clients |
 
-我估计现场端到端的延迟大约是 30–100ms，**这个数字没有实测过**。
+My estimate for on-site end-to-end latency is roughly 30–100ms; **this number has not been measured**.
 
-**配额**（来源：supabase.com/docs/guides/realtime/limits）
+**Quotas** (source: supabase.com/docs/guides/realtime/limits)
 
 | | Free | Pro | Team |
 |---|---|---|---|
-| 并发连接数 | 200 | 500 | 10,000 |
-| 每秒消息数 | 100 | 500 | 2,500 |
-| Presence 每秒消息数 | 20 | 50 | 1,000 |
+| Concurrent connections | 200 | 500 | 10,000 |
+| Messages per second | 100 | 500 | 2,500 |
+| Presence messages per second | 20 | 50 | 1,000 |
 
-**消息怎么计数（2026-11-02 查证）**
-- 文档（docs/guides/platform/manage-your-usage/realtime-messages）原话：*"Each broadcast message counts as one message sent plus one message per subscribed client that receives it."* 例子：广播一条给 4 个订阅者算 5 条。120 个玩家时一次广播算 **121 条**
-- 每秒限制的实现（github.com/supabase/realtime，`lib/realtime/tenants.ex` 的 `events_per_second_rate`）：计数器 **5 秒一桶、保留 12 桶、按桶平均**，也就是看 **60 秒滚动平均**，不是瞬时值。所以瞬时发 121 条没问题，只要每分钟总量低于 6000 条
-- 超限的后果（limits 文档原话）：*"Connections will be disconnected if your project is generating too many messages per second."* supabase-js 会自动重连，但那一刻的广播就丢了
-- 本设计的用量：每轮广播 2 次，每分钟最多 4 轮 → 8 × 121 ≈ 970 条/分钟 ≈ 16 条/秒。余量 6 倍
+**How messages are counted (verified 2026-11-02)**
+- The docs (docs/guides/platform/manage-your-usage/realtime-messages) say verbatim: *"Each broadcast message counts as one message sent plus one message per subscribed client that receives it."* Example: one broadcast to 4 subscribers counts as 5. With 120 players one broadcast counts as **121 messages**
+- The per-second limit's implementation (github.com/supabase/realtime, `events_per_second_rate` in `lib/realtime/tenants.ex`): the counter uses **5-second buckets, keeps 12 buckets, and averages over them**, i.e. it looks at a **60-second rolling average**, not an instantaneous value. So sending 121 messages in one instant is fine as long as the total stays under 6000 per minute
+- Consequence of exceeding it (limits docs, verbatim): *"Connections will be disconnected if your project is generating too many messages per second."* supabase-js reconnects automatically, but that broadcast is lost
+- This design's usage: 2 broadcasts per round, at most 4 rounds per minute → 8 × 121 ≈ 970 messages/minute ≈ 16 messages/second. 6× headroom
 
-**匿名登录限流（2026-11-02 查证）**
-- docs/guides/auth/rate-limits：匿名登录 *"Defaults to 30 requests per hour"*，按 IP 计。全场同一个出口 IP 时，第 31 个人就会被挡住。所以不用 Auth 的决定是对的
+**Anonymous sign-in rate limit (verified 2026-11-02)**
+- docs/guides/auth/rate-limits: anonymous sign-in *"Defaults to 30 requests per hour"*, counted per IP. With the whole room behind one egress IP the 31st person is blocked. So the decision not to use Auth is correct
 
-**由此得出的结论**
-- **瓶颈是 200 个并发连接**，不是消息数，也不是延迟
-- 高频游戏同步不可行：15Hz × 120 个接收者 = 1800 条/秒，远超任何一档
-- **Presence 不用**：Free 版每秒只有 20 条，大量玩家同时加入时会被限流
-- **Postgres Changes 不用**：太慢，而且吞吐量有限
-- **Edge Functions 不用**：有运行时长上限，每个请求可能落到不同的实例上，不能当游戏服务器；去掉 AI 之后也没别的用途
-- 不在自己的机器上跑 Supabase：运维成本太高，场馆 WiFi 还可能开启了客户端隔离
+**Conclusions**
+- **The bottleneck is the 200 concurrent connections**, not message count, not latency
+- High-frequency game sync is infeasible: 15 Hz × 120 receivers = 1800 messages/second, far above any tier
+- **No Presence**: the Free tier allows only 20 per second; it would be throttled when many players join at once
+- **No Postgres Changes**: too slow, and throughput is limited
+- **No Edge Functions**: they have a runtime cap, each request may land on a different instance, so they cannot act as a game server; with the AI gone there is no other use for them
+- Not self-hosting Supabase: too much operational cost, and the venue WiFi may have client isolation on
 
 ---
 
-## 5. 关键设计决策
+## 5. Key design decisions
 
-| 决策 | 理由 |
+| Decision | Reason |
 |---|---|
-| **手机输入走 RPC（HTTP），不走 Realtime** | 不占用 Realtime 消息配额；Postgres 处理 120 人 × 每秒 1 次的写入没有压力 |
-| **大屏是唯一的裁判**（host） | 不需要自己的游戏服务器；所有计时、计分和状态推进都在一个地方，容易理解和调试 |
-| **大屏的 RPC 要带 `host_key`** | 没有 Auth，不然任何拿到 anon key 的人都能开始下一轮或改比分。一个随机串放在大屏 URL 里就够了 |
-| **计分用 TypeScript 纯函数**（`scoring.ts`） | 可以直接写单元测试；一个人很难凑够多台设备测试，所以要让大部分逻辑不需要真人就能测 |
-| **Realtime 只做大屏 → 手机的广播，每轮只发 2 次** | 把消息量压到配额的 1/6；大厅不广播，人数由大屏轮询 |
-| **所有倒计时以服务端时间戳为准** | 广播到达各手机的时刻有几十到几百毫秒的差异，如果按"收到广播"开始计时，结束时刻就不一致。`join_game` 返回 `server_now` 算 offset，`round` 广播带 `starts_at`/`ends_at` |
-| **手机每 2s 轮询 `get_state` 兜底** | 锁屏、切后台、WiFi 抖动都会漏广播。60 请求/秒的只读 RPC 很便宜，换来"最多晚 2 秒跟上" |
-| **大屏每 250ms 通过 RPC 读取汇总数据** | 实时动画足够流畅，又不占用 Realtime 配额 |
-| **玩家上限 120；满员进观众模式** | 低于 Free 版的 200 个连接；观众模式不建 Realtime 连接，只轮询 RPC，没抢到名额的人也能看比分 |
-| **不使用 Supabase Auth，包括匿名登录** | 匿名登录每 IP 每小时 30 次（已查文档），全场同一个出口 IP 会被挡住。玩家身份改用 localStorage 里的 uuid |
-| **阵营分配用 `nextval(seq) % 3`** | 原子操作，三边人数差不超过 1 |
-| **阵营得分按人均计算，分母是全部成员** | 人数不均或有人中途进出时依然公平，也没法靠"少交卷"刷平均 |
-| **名字由服务端生成，不能自己输入，也没有"换一个"** | 名字会显示在大屏上，客户端生成的话可以伪造请求传脏话。服务端生成最省事，还少一个按钮 |
-| **狂点每 1000ms 提交一次，首次随机错开** | 大屏是每 250ms 汇总一次画的，120 人错开提交后画面依然连续；RPC 压力比 500ms 少一半 |
-| **每轮 15 秒（2 + 10 + 1.2 + 1.8），自动推进** | 节奏快，现场不冷场；"收卷"的 1.2 秒让迟到的提交进来（服务端宽限 1 秒，大屏多等 0.2 秒给在途请求），再计分 |
-| **棋盘只比位置，特殊格子只在停下时触发，不连锁** | 观众一眼看懂"谁在前面谁赢"；边界情况最少（v0 的"星星数决胜"去掉了） |
-| **P0 先做直线赛道** | 蜿蜒赛道是纯视觉，放 P2；直线赛道一个 flex 行就能画 |
-| **小游戏只用低频输入** | 控制消息量；精准停止在手机本地判定，不受网络延迟影响，比较公平 |
-| **不用摇一摇** | iOS 需要用户授权动作传感器，现场成功率很难保证 |
-| **bot 模式走真实的 RPC 路径，但不订阅 Realtime** | 一个人就能测完整个流程，也能在 WiFi 出问题时当作 demo 保底方案；不占连接数，所以 bot 和真人可以一起测 |
-| **第 5 分钟先部署一次** | 手机只能访问公网地址，部署流程要尽早跑通；之后每个阶段都部署 |
-| **单入口 + 查询参数区分手机和大屏，本地 build 再推 `dist/`** | 不依赖托管方的 SPA rewrite 和环境变量，Vercel、gh-pages、Pi 都能放；也省掉路由库 |
-| **`players` 主键是 `(game_id, id)`** | 玩家 uuid 跨局不变，主键只有 `id` 的话重置游戏后所有测试过的手机都进不来 |
-| **`round_live` 返回每个玩家一行，大厅用 `list_players`** | 大厅名字泡泡、飞镖、少数派小球、猜拳投票条都要逐人数据；120 行每秒 4 次没有压力，四个小游戏共用一条路径 |
-| **手机全程轮询 `get_state`，不只在比赛中** | 大厅要等 60–90 秒，锁屏后 WebSocket 静默断掉，supabase-js 要几十秒才发现 |
-| **P0 必须包含颁奖** | 只做到 P0 也要有头有尾；三轮狂点 + 极简颁奖也是完整的 demo |
-| **开发分阶段，第 40 分钟停止加功能** | 能完整跑完的两个小游戏，比会卡住的五个小游戏更容易赢 |
+| **Phone input goes through RPC (HTTP), not Realtime** | Does not consume the Realtime message quota; Postgres handles 120 players × 1 write per second without strain |
+| **The big screen is the sole referee** (host) | No game server of our own; all timing, scoring and state transitions happen in one place, easy to understand and debug |
+| **Big-screen RPCs carry a `host_key`** | There is no Auth, so otherwise anyone with the anon key could start the next round or change the score. A random string in the big-screen URL is enough |
+| **Scoring in pure TypeScript functions** (`scoring.ts`) | Unit-testable directly; one person can hardly gather enough devices to test, so most logic must be testable without real players |
+| **Realtime only for big screen → phone broadcasts, 2 per round** | Keeps message volume at 1/6 of the quota; no broadcast in the lobby, the big screen polls the player count |
+| **All countdowns use the server timestamp** | A broadcast reaches each phone tens to hundreds of milliseconds apart; starting the timer "on receipt" makes the end times disagree. `join_game` returns `server_now` to compute the offset; the `round` broadcast carries `starts_at`/`ends_at` |
+| **Phones poll `get_state` every 2s as a fallback** | Lock screen, backgrounding and WiFi jitter all drop broadcasts. 60 read-only RPCs per second is cheap and buys "at most 2 seconds behind" |
+| **Big screen reads aggregates via RPC every 250ms** | Smooth enough for live animation, without touching the Realtime quota |
+| **Player cap 120; overflow goes to spectator mode** | Below the Free tier's 200 connections; spectator mode opens no Realtime connection and only polls RPC, so people who missed a slot can still watch the score |
+| **No Supabase Auth, including anonymous sign-in** | Anonymous sign-in is 30 per IP per hour (checked in the docs); the whole room shares one egress IP and would be blocked. Player identity is a uuid in localStorage instead |
+| **Faction assignment via `nextval(seq) % 3`** | Atomic; the three factions differ by at most 1 |
+| **Faction score is per-capita, denominator is all members** | Fair with uneven sizes or people joining and leaving mid-game, and the average cannot be gamed by "submitting less" |
+| **Names are generated server-side, not typed, and no "reroll"** | Names appear on the big screen; a client-generated name could be forged to show profanity. Server generation is simplest and saves a button |
+| **Mash submits every 1000ms, first submission randomly staggered** | The big screen aggregates and draws every 250ms; with 120 players staggered the picture stays continuous; half the RPC load of 500ms |
+| **15 seconds per round (2 + 10 + 1.2 + 1.8), auto-advancing** | Fast pace, no dead air; the 1.2-second "collect" lets late submissions in (server grace of 1 second, big screen waits 0.2 seconds more for in-flight requests), then scores |
+| **Board compares position only; special squares trigger only on landing, no chaining** | The audience sees at a glance "whoever is ahead wins"; fewest edge cases (v0's "star count tiebreak" removed) |
+| **P0 builds a straight track first** | A winding track is pure visuals, moved to P2; a straight track is one flex row |
+| **Mini-games use only low-frequency input** | Controls message volume; precise stop is judged locally on the phone, unaffected by network latency, so it is fairer |
+| **No shake gesture** | iOS requires user permission for motion sensors; on-site success rate is hard to guarantee |
+| **Bot mode goes through the real RPC path but does not subscribe to Realtime** | One person can test the whole flow, and it doubles as the fallback demo if WiFi fails; it uses no connections, so bots and real people can be tested together |
+| **Deploy once by minute 5** | Phones can only reach a public address; the deploy pipeline must work early; deploy after every phase afterwards |
+| **Single entry + query parameters to distinguish phone and big screen, build locally then push `dist/`** | No dependence on the host's SPA rewrite or environment variables; works on Vercel, gh-pages or a Pi; no router library |
+| **`players` primary key is `(game_id, id)`** | The player uuid is stable across games; with `id` alone as the key, every phone that was ever tested would be locked out after a game reset |
+| **`round_live` returns one row per player; the lobby uses `list_players`** | Lobby name bubbles, darts, minority balls and RPS vote bars all need per-player data; 120 rows 4 times per second is no strain, and the four mini-games share one path |
+| **Phones poll `get_state` throughout, not only during play** | The lobby lasts 60–90 seconds; after lock screen the WebSocket drops silently and supabase-js takes tens of seconds to notice |
+| **P0 must include the award ceremony** | Even P0 alone should have a beginning and an end; three mash rounds plus a minimal ceremony is a complete demo |
+| **Build in phases, stop adding features at minute 40** | Two mini-games that run end to end beat five that get stuck |
 
 ---
 
-## 6. 未验证的假设和待确认事项（请 reviewer 重点看）
+## 6. Unverified assumptions and open items (reviewers, please focus here)
 
-1. **Free 版 Nano 实例能不能承受每秒约 180 次 RPC**（狂点 120/s + 兜底轮询 60/s）：应该没问题，但没测。负载测试看 p95，超过 300ms 就把狂点间隔改成 2s
-2. **现场端到端延迟**和**场馆 WiFi 的质量**
-3. **比赛规则**：提前写好设计文档是否允许（这里没有提前写代码）？评分标准、demo 时长、是否组队
-4. **现场设备**：大屏能否接笔记本，**声音能否接到会场音响**
-5. **要不要升 Pro（25 美元/月）**：Pro 有 500 个连接，上限可以提到 **300**，基本覆盖到场的所有人；Pro 自带的 Micro 实例也比 Nano 稳。代价是 25 美元和把 `max_players` 改成 300 再跑一次负载测试。**目前按 Free 和 120 人设计**，这是用户的决定
-6. **反作弊上限**：狂点总数封顶 `30 × 秒数 + 10`，30 次/秒是按双拇指极限估的，没验证
-7. **限流源码是 main 分支**：线上部署的版本可能略有不同，但文档描述（超限断连）和源码一致
-8. **Realtime 公开频道的开关**：Dashboard 里有 "Allow public access"，新项目的默认值没确认。开场前看一眼，P-1 时发一条测试广播验证
+1. **Can the Free-tier Nano instance take about 180 RPCs per second** (mash 120/s + fallback polling 60/s)? Should be fine, but untested. Load test and watch p95; above 300ms change the mash interval to 2s
+2. **On-site end-to-end latency** and **venue WiFi quality**
+3. **Contest rules**: is writing the design doc in advance allowed (no code was written in advance)? Judging criteria, demo length, team or solo
+4. **Venue hardware**: can a laptop drive the big screen, **can audio reach the house PA**
+5. **Upgrade to Pro ($25/month)?** Pro has 500 connections, the cap could go to **300**, covering roughly everyone present; Pro's bundled Micro instance is also steadier than Nano. Cost: $25 and changing `max_players` to 300 then re-running the load test. **Currently designed for Free and 120 players**, by the user's decision
+6. **Anti-cheat cap**: mash total capped at `30 × seconds + 10`; 30 per second is a guess at the two-thumb limit, not verified
+7. **Rate-limit source is the main branch**: the deployed version may differ slightly, but the docs' description (disconnect on exceeding) matches the source
+8. **Realtime public channel toggle**: the Dashboard has "Allow public access"; the default for new projects is unconfirmed. Check before the event, and send a test broadcast during P-1 to verify
 
-已经查证、从这个列表里移除的：Broadcast 按接收者计数（是）、限流按滚动平均（是）、匿名登录按 IP 限流（是）。
+Verified and removed from this list: Broadcast counts per receiver (yes), rate limit is a rolling average (yes), anonymous sign-in is rate-limited per IP (yes).
 
-## 7. 请 reviewer 重点看的地方
+## 7. What reviewers should focus on
 
-- 「大屏当裁判，手机输入走 RPC」的架构，在 120 人的规模下有没有被忽略的瓶颈
-- DESIGN.md §5 的计分规则和 §4 的棋盘规则是否有漏洞
-- 1 小时内完成 P0 是否现实；P-1、P0、P1、P2 的划分是否合理
-- 有没有能用很少时间显著提升 demo 效果的改进
+- Whether the "big screen as referee, phone input over RPC" architecture has an overlooked bottleneck at 120 players
+- Whether the scoring rules in DESIGN.md §5 and the board rules in §4 have holes
+- Whether finishing P0 within 1 hour is realistic; whether the P-1 / P0 / P1 / P2 split makes sense
+- Any improvement that would noticeably lift the demo for very little time
 
 ---
 
-## 8. 改进记录
+## 8. Change log
 
-**第 1 轮（事实核实 + 架构补漏）**
-- 查证了 Broadcast 计数方式和限流算法（§4），结论：瓶颈只有连接数，去掉了"降到 90 人"的预案
-- 补上了原设计缺的 host 侧 RPC（`create_game`、`start_round`、`round_inputs`、`set_game_state`）和 `host_key` 鉴权。原来的设计里大屏没有任何写入途径，anon 又不能直接写表
-- 倒计时改为以服务端时间戳为准，宽限期 500ms → 1s，RESULT 拆成"收卷 1s + 动画 2s"
-- 加了手机端兜底轮询、Wake Lock、回前台对齐；加了观众模式
-- 名字改为服务端生成；狂点提交 500ms → 1000ms 并随机错开；反作弊改为按时间封顶（原来的"每 500ms 增量 ≤ 15"会把一次丢包后的正常提交截断）
-- 棋盘：去掉星星计数，改成只比位置；特殊格子只在停下时触发；20 格封顶；P0 直线赛道
-- 少数派明确为按全场统计；猜拳补了"阵营没人投票"的情况；排名并列的 1% 给了精确定义
-- 开发阶段加了 P-1（5 分钟内先部署一次）；P0 缩成竖切；大厅时间 30s → 60–90s
+**Round 1 (fact checking + architecture gaps)**
+- Verified the Broadcast counting method and the rate-limit algorithm (§4); conclusion: the only bottleneck is connections, so the "drop to 90 players" contingency was removed
+- Added the host-side RPCs the original design lacked (`create_game`, `start_round`, `round_inputs`, `set_game_state`) and `host_key` auth. In the original design the big screen had no write path, and anon cannot write tables directly
+- Countdowns switched to server timestamps; grace period 500ms → 1s; RESULT split into "collect 1s + animation 2s"
+- Added phone-side fallback polling, Wake Lock, re-sync on return to foreground; added spectator mode
+- Names moved to server generation; mash submission 500ms → 1000ms with random stagger; anti-cheat changed to a time-based cap (the old "increment ≤ 15 per 500ms" would truncate a normal submission after one lost packet)
+- Board: star counting removed, position only; special squares trigger only on landing; capped at 20 squares; P0 straight track
+- Minority defined as counted across the whole room; RPS covers "faction with no votes"; the 1% tie tolerance in ranking given a precise definition
+- Build phases gained P-1 (deploy once within 5 minutes); P0 shrunk to a vertical slice; lobby time 30s → 60–90s
 
-**第 2 轮（独立 reviewer 的 18 条意见，采纳了全部）**
-- 部署：路由改成查询参数、单入口、本地 build 推 `dist/`，不依赖 Vercel 的 rewrite 和环境变量
-- 数据：`players` 主键改为 `(game_id, id)`，`inputs` 去掉对 players 的外键；补了 `list_players`，`round_live` 改为逐玩家行，删掉 `round_inputs`；定义了 `games.state` 的结构和 MVP 积分规则（每轮 3/2/1）
-- 名字加两位数编号；所有带名字的 payload 附 `player_id`，手机按 id 判断是不是自己
-- P0 改为"有头有尾"：3 轮狂点 + 直线棋盘 + 极简颁奖，动画类挪到 P1；`schedule.ts` 写明轮次；主持人面板去掉做不出来的"暂停"
-- 排名改为竞争排名（1,1,3），全平局各走 1 格；特殊格子奇偶混排，走 2 格的阵营也能踩到
-- 迁移要求可重复执行；写明 schema cache 报错的处理
-- `host_key` 从地址栏移到 `sessionStorage`；大屏刷新后从 `games.state` 恢复
-- `submit_input` 按 kind 校验范围；少数派改成只能选一次
-- 手机：`pointerdown` 计数、禁橡皮筋和长按、提交重试 3 次、全程轮询、回前台重建频道、`localStorage` 兜底
-- 时间偏移算上半个 RTT；大屏也用 `time.ts`；阶段机用 rAF；host RPC 重试
-- 音效缩到 3 个；猜拳最后 3 秒遮投票条；负载测试脚本必须释放连接，并且排在真机彩排之前
+**Round 2 (18 comments from an independent reviewer, all adopted)**
+- Deployment: routing by query parameter, single entry, local build pushing `dist/`, no dependence on Vercel rewrites or environment variables
+- Data: `players` primary key changed to `(game_id, id)`, `inputs` lost its foreign key to players; added `list_players`, `round_live` changed to per-player rows, `round_inputs` removed; defined the structure of `games.state` and the MVP points rule (3/2/1 per round)
+- Names get a two-digit number; every payload carrying a name also carries `player_id`, and the phone checks by id whether it is itself
+- P0 changed to "beginning and end": 3 mash rounds + straight board + minimal ceremony, animations moved to P1; `schedule.ts` spells out the rounds; host panel dropped the "pause" that cannot be built
+- Ranking changed to competition ranking (1,1,3); a three-way tie moves everyone 1 square; special squares mixed odd and even so a faction moving 2 per round can land on them too
+- Migration must be re-runnable; documented how to handle the schema cache error
+- `host_key` moved from the address bar to `sessionStorage`; the big screen recovers from `games.state` after a refresh
+- `submit_input` validates range by kind; minority became single-choice
+- Phone: `pointerdown` counting, no rubber-band or long-press, 3 submission retries, polling throughout, channel rebuild on return to foreground, `localStorage` fallback
+- Time offset includes half the RTT; the big screen also uses `time.ts`; phase machine on rAF; host RPC retries
+- Sound effects cut to 3; RPS hides the vote bars for the last 3 seconds; the load-test script must release connections and runs before the real-device rehearsal
 
-**第 3 轮（一致性检查）**
-- 三个文件里检查了旧版残留（`/screen` 路由、`round_inputs`、500ms、星星决胜、暂停、换名字），只剩改进记录里的历史提法
-- 统一了每轮时间分配（2 + 10 + 1.2 + 1.8）在 README 和 DESIGN 之间的写法
-- 没有再动 RPC 签名和 P0 清单，正在跑的 Claude Code session 可以直接按 v2 文档继续
+**Round 3 (consistency check)**
+- Checked the three files for leftovers from old versions (`/screen` route, `round_inputs`, 500ms, star tiebreak, pause, name reroll); only historical mentions in the change log remain
+- Unified the per-round time split (2 + 10 + 1.2 + 1.8) between README and DESIGN
+- RPC signatures and the P0 list were left untouched, so a running Claude Code session can continue straight from the v2 docs
