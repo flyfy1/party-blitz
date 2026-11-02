@@ -1,0 +1,15 @@
+.lab { height: 100%; display: flex; flex-direction: column; background: #1B1033; }
+.lab-bar { flex: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; background: rgba(0,0,0,.4); font-size: 14px; z-index: 10; }
+.lab-bar select, .lab-bar button { font: inherit; font-weight: 700; padding: 6px 10px; border-radius: 8px; border: none; background: #fff; color: #222; }
+.lab-bar button { background: #FFE14D; }
+.lab-bar label { display: flex; align-items: center; gap: 4px; font-weight: 700; }
+.lab-phase { margin-left: auto; opacity: .7; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; }
+.lab-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.lab-phone { width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: #000; }
+.lab-head { flex: none; padding: 8px 14px; font-weight: 800; font-size: 15px; text-align: center; }
+.lab-game { flex: 1; min-height: 0; position: relative; }
+.lab-log { flex: none; font-size: 12px; padding: 6px 10px; background: rgba(0,0,0,.5); opacity: .8; white-space: nowrap; overflow: auto; }
+/* 桌面上放进一个手机框 */
+@media (min-width: 700px) {
+  .lab-phone { width: 390px; height: min(820px, 92%); border-radius: 36px; border: 8px solid #333; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+}
