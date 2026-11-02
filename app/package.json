@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "smoke": "node --env-file=.env scripts/smoke-test.mjs",
     "test": "vitest run",
-    "deploy": "npm run build && vercel deploy dist --prod --yes"
+    "deploy": "npm run build && vercel deploy dist --prod --yes",
+    "loadtest": "node --env-file=.env scripts/load-test.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
