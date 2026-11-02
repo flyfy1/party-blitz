@@ -170,7 +170,7 @@ My estimate for on-site end-to-end latency is roughly 30–100ms; **this number 
 
 ## 6. Unverified assumptions and open items (reviewers, please focus here)
 
-1. **Can the Free-tier Nano instance take about 180 RPCs per second** (mash 120/s + fallback polling 60/s)? Should be fine, but untested. Load test and watch p95; above 300ms change the mash interval to 2s
+1. ~~Can the Free-tier Nano instance take about 180 RPCs per second?~~ **Verified 2026-11-02 20:00** with `npm run loadtest` at 120 clients: 120/120 joined and subscribed, player 121 got `{full: true}`; broadcast delivery 100% (round p50 19 ms / p95 21 ms, result p50 30 ms / p95 31 ms); RPC submit_input p50 39 ms / p95 252 ms, join_game p50 117 ms / p95 196 ms, round_live p50 46 ms / p95 75 ms; 0 errors in 1495 calls. p95 stayed under the 300 ms threshold, so the 1 s mash interval stands
 2. **On-site end-to-end latency** and **venue WiFi quality**
 3. **Contest rules**: is writing the design doc in advance allowed (no code was written in advance)? Judging criteria, demo length, team or solo
 4. **Venue hardware**: can a laptop drive the big screen, **can audio reach the house PA**
