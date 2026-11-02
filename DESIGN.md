@@ -147,10 +147,11 @@
 按阵营得分降序排序，用**竞争排名**：第 i 个和第 i-1 个的差 `<= 0.01 × 前者` 就和前者同名次，否则名次 = i（名次序列是 1,1,3 或 1,2,2 或 1,1,1）。猜拳是整数分，只有相等才并列。某个阵营一个人都没有时得分记 0。
 
 ### 轮次预设
-主持人可以选一套轮次表，最后一轮都是决赛（前进格数 ×2）：
-- **Classic 5**：5 轮，默认
-- **All games (8)**：`mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`（决赛）
-- **Random 6**：随机 6 轮
+主持人在大厅阶段从面板里选一套轮次表（`app/src/host/presets.ts`），选择存在 sessionStorage。最后一轮都是决赛（前进格数 ×2）：
+- **All games**（默认）：`mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`
+- **Classic 5**：`mash` → `stop` → `minority` → `rps` → `mash`
+- **Random 6**：从 7 种里打乱，去掉 `mash` 后取 5 种，最后固定接 `mash`
+- 大屏还不能显示的种类会被 `SUPPORTED_KINDS` 过滤掉，面板上显示的是过滤后的实际轮次
 
 ---
 

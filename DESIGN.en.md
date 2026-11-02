@@ -149,10 +149,11 @@ All input goes through `submit_input(round_id, player_id, value)` (see §7). The
 Sort by faction score descending using **competition ranking**: if the gap between the i-th and the (i-1)-th is `<= 0.01 × the former`, it shares that rank, otherwise rank = i (rank sequences are 1,1,3 or 1,2,2 or 1,1,1). RPS has integer scores, so only equality ties. A faction with no members scores 0.
 
 ### Schedule presets
-The host picks one schedule; the last round is always the final (board moves ×2):
-- **Classic 5**: 5 rounds, the default
-- **All games (8)**: `mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash` (final)
-- **Random 6**: 6 rounds drawn at random
+The host picks a schedule from the panel during the lobby (`app/src/host/presets.ts`); the choice is kept in sessionStorage. The last round is always the final (board moves ×2):
+- **All games** (default): `mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`
+- **Classic 5**: `mash` → `stop` → `minority` → `rps` → `mash`
+- **Random 6**: shuffle the 7 kinds, drop `mash`, take 5, then append `mash`
+- Kinds the big screen cannot render yet are filtered out by `SUPPORTED_KINDS`; the panel shows the filtered, actual schedule
 
 ---
 
