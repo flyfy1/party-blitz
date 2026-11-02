@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PARTY BLITZ · Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: #1B1033; --f0: #FF4D3D; --f0l: #FFB199; --f1: #2F7BFF; --f1l: #9CC3FF; --f2: #22C55E; --f2l: #A7F3C0; --gold: #FFD633; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: #fff; font-family: 'Baloo 2', system-ui, sans-serif; overflow: hidden; }
+  .root { position: fixed; inset: 0; overflow: hidden; }
+  .blob { position: absolute; width: 900px; height: 900px; border-radius: 50%; filter: blur(120px); opacity: 0.32; animation: drift 18s ease-in-out infinite alternate; }
+  .b0 { background: var(--f0); left: -200px; top: -200px; }
+  .b1 { background: var(--f1); right: -250px; top: 10%; animation-delay: -6s; }
+  .b2 { background: var(--f2); left: 30%; bottom: -350px; animation-delay: -12s; }
+  @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(120px,80px) scale(1.15); } }
+  .stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: center; }
+
+  .eyebrow { position: absolute; top: 44px; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 700; letter-spacing: 6px; opacity: 0.7; }
+  h1 { position: absolute; top: 84px; left: 0; right: 0; text-align: center; font-size: 76px; font-weight: 800; line-height: 1; text-shadow: 0 8px 0 rgba(0,0,0,0.35); }
+  h1 em { font-style: normal; color: var(--gold); }
+
+  .card { position: absolute; top: 230px; height: 440px; border-radius: 36px; padding: 28px 34px; background: rgba(255,255,255,0.07); border: 5px solid var(--c); box-shadow: 0 20px 60px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(255,255,255,0.08); }
+  .card h2 { font-size: 46px; font-weight: 800; line-height: 1.05; color: var(--c); }
+  .card h2 small { display: block; font-size: 24px; font-weight: 700; color: #fff; opacity: 0.7; margin-top: 4px; }
+  .card ul { list-style: none; margin-top: 18px; }
+  .card li { font-size: 27px; font-weight: 700; line-height: 1.35; padding-left: 36px; position: relative; }
+  .card li::before { content: '›'; position: absolute; left: 8px; color: var(--c); font-weight: 800; }
+  .card li code { font-family: 'Baloo 2', monospace; font-weight: 800; color: var(--cl); }
+  .card li.m { opacity: 0.65; font-weight: 600; font-size: 24px; }
+  #phones { left: 80px; width: 500px; --c: var(--f0); --cl: var(--f0l); }
+  #supa { left: 640px; width: 640px; --c: var(--f1); --cl: var(--f1l); top: 205px; height: 460px; }
+  #screen { left: 1340px; width: 500px; --c: var(--f2); --cl: var(--f2l); }
+
+  svg.flows { position: absolute; inset: 0; width: 1920px; height: 1080px; pointer-events: none; }
+  .flow { fill: none; stroke-width: 7; stroke-linecap: round; stroke-dasharray: 18 14; animation: dash 1s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -32; } }
+  .flow-label { font-family: 'Baloo 2', sans-serif; font-size: 24px; font-weight: 800; fill: #fff; }
+  .flow-label.m { font-size: 20px; font-weight: 700; opacity: 0.7; }
+
+  .callouts { position: absolute; left: 80px; right: 80px; top: 765px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
+  .callout { border-radius: 30px; padding: 20px 30px; background: rgba(0,0,0,0.3); border: 4px solid rgba(255,255,255,0.14); text-align: center; }
+  .callout b { display: block; font-size: 76px; font-weight: 800; line-height: 1; color: var(--gold); text-shadow: 0 6px 0 rgba(0,0,0,0.35); }
+  .callout span { display: block; font-size: 30px; font-weight: 700; margin-top: 8px; line-height: 1.2; }
+  .callout span i { font-style: normal; opacity: 0.65; font-size: 24px; display: block; }
+
+  .links { position: absolute; bottom: 26px; left: 0; right: 0; text-align: center; font-size: 30px; font-weight: 700; opacity: 0.8; letter-spacing: 1px; }
+  .links b { color: var(--gold); margin: 0 18px; }
+  .links a { color: inherit; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="root">
+  <div class="blob b0"></div><div class="blob b1"></div><div class="blob b2"></div>
+  <div class="stage" id="stage">
+    <div class="eyebrow">PARTY BLITZ ⚡ · HOW IT WORKS</div>
+    <h1>No game server. <em>Postgres</em> is the referee's clerk.</h1>
+
+    <div class="card" id="phones">
+      <h2>📱 120 phones<small>one localStorage uuid each · no Auth</small></h2>
+      <ul>
+        <li><code>join_game()</code> once</li>
+        <li><code>submit_input()</code> ≈ 1 req / s</li>
+        <li><code>get_state()</code> fallback poll</li>
+        <li>subscribe <code>game:{id}</code></li>
+        <li class="m">receive only · never publish</li>
+        <li class="m">player #121+ → spectator mode</li>
+      </ul>
+    </div>
+
+    <div class="card" id="supa">
+      <h2>⚡ Supabase<small>Singapore · Free tier</small></h2>
+      <ul>
+        <li>Postgres · 4 tables · <code>RLS on</code></li>
+        <li><code>security definer</code> RPCs only</li>
+        <li>advisory lock → hard 120 cap</li>
+        <li>server-side names &amp; anti-cheat</li>
+        <li>Realtime <code>Broadcast</code> channel</li>
+        <li class="m">2 messages per round · 60-s rolling limit</li>
+      </ul>
+    </div>
+
+    <div class="card" id="screen">
+      <h2>🖥️ Big screen<small>the only referee · holds host_key</small></h2>
+      <ul>
+        <li><code>start_round()</code> · server time</li>
+        <li><code>round_live()</code> every 250 ms</li>
+        <li>scoring in <code>pure TS</code> · unit-tested</li>
+        <li><code>set_game_state()</code> writes board</li>
+        <li class="m">broadcasts round / result</li>
+        <li class="m">rAF phase machine · never stalls</li>
+      </ul>
+    </div>
+
+    <svg class="flows" viewBox="0 0 1920 1080">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#fff"/></marker>
+      </defs>
+      <path class="flow fl" stroke="#FF4D3D" marker-end="url(#ar)" d="M582 380 C 605 380, 605 380, 632 380"/>
+      <text class="flow-label" x="580" y="350">RPC</text>
+      <path class="flow fl" stroke="#22C55E" marker-end="url(#ar)" marker-start="url(#ar)" d="M1288 380 C 1310 380, 1310 380, 1332 380"/>
+      <text class="flow-label" x="1285" y="350">RPC</text>
+      <path class="flow fl" stroke="#2F7BFF" marker-end="url(#ar)" d="M1340 600 C 1250 760, 670 760, 580 600"/>
+      <text class="flow-label" x="960" y="730" text-anchor="middle">Broadcast · round + result · fan-out to 120</text>
+    </svg>
+
+    <div class="callouts">
+      <div class="callout"><b>0</b><span>game servers<i>phones never talk to each other</i></span></div>
+      <div class="callout"><b>2</b><span>broadcasts per round<i>≈ 1/6 of the Free-tier message budget</i></span></div>
+      <div class="callout"><b>~1 h</b><span>built with Claude Code<i>from a design doc, in parallel sessions</i></span></div>
+    </div>
+
+    <div class="links"><b>▶</b> <a href="https://party-blitz.vercel.app">party-blitz.vercel.app</a> <b>·</b> <a href="https://github.com/flyfy1/party-blitz">github.com/flyfy1/party-blitz</a></div>
+  </div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script>
+  // scale the 1920×1080 stage to fit
+  const stage = document.getElementById('stage')
+  const fit = () => { const s = Math.min(innerWidth / 1920, innerHeight / 1080); stage.style.transform = `translate(-50%, -50%) scale(${s})` }
+  fit(); addEventListener('resize', fit)
+
+  // entrance
+  if (window.gsap) {
+    const tl = gsap.timeline({ defaults: { ease: 'back.out(1.7)' } })
+    tl.from('.eyebrow', { y: -30, opacity: 0, duration: 0.5 })
+      .from('h1', { scale: 0.6, opacity: 0, duration: 0.6 }, '-=0.2')
+      .from('#phones', { x: -300, opacity: 0, duration: 0.6 }, '-=0.2')
+      .from('#supa', { scale: 0.5, opacity: 0, duration: 0.6 }, '-=0.4')
+      .from('#screen', { x: 300, opacity: 0, duration: 0.6 }, '-=0.4')
+      .from('.fl', { opacity: 0, duration: 0.4, stagger: 0.15, ease: 'power1.out' }, '-=0.1')
+      .from('.flow-label', { opacity: 0, duration: 0.3, ease: 'power1.out' }, '<')
+      .from('.callout', { y: 80, opacity: 0, duration: 0.6, stagger: 0.15 }, '-=0.2')
+      .from('.links', { opacity: 0, duration: 0.5, ease: 'power1.out' }, '-=0.2')
+    // press R to replay
+    addEventListener('keydown', (e) => { if (e.key === 'r' || e.key === 'R') tl.restart() })
+  }
+</script>
+</body>
+</html>
