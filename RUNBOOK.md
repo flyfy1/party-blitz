@@ -28,19 +28,29 @@
 4. 念一遍短网址。剩最后 10 个名额时，大屏会显示 `Last N spots!`。满员后二维码上会盖 `FULL` 章。
 5. 留 **60–90 秒**，等名字基本不再增加。
 
-## 2. 开始比赛（约 80 秒，自动进行）
+## 2. 开始比赛（自动进行，每轮约 15 秒）
 
 1. 按 `H` 打开面板，点 **Start game**，再按 `H` 把面板藏起来。
-2. **只需要点这一次。** 后面 5 轮会自动一轮接一轮地跑，每轮约 15 秒：2 秒介绍、10 秒比赛、1.2 秒收卷、1.8 秒结果和棋盘移动。
-3. 当前的轮次表：
+2. **只需要点这一次。** 后面的轮次会自动一轮接一轮地跑，每轮约 15 秒：2 秒介绍、10 秒比赛、1.2 秒收卷、1.8 秒结果和棋盘移动。
+3. **轮次预设**：最后一轮都是决赛，前进格数 ×2。
+   - **Classic 5**：5 轮，默认。
+   - **All games (8)**：`mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`（决赛），约 2 分钟。
+   - **Random 6**：随机 6 轮。
 
-   | 轮次 | 小游戏 | 大屏大字 | 你可以喊 |
-   |---|---|---|---|
-   | 1 | ⚡ Tap Frenzy | `MASH!` | "Mash! Mash! Both thumbs!" |
-   | 2 | 🎯 Perfect Stop | `STOP IN THE MIDDLE!` | "One tap only. Stop it dead centre!" |
-   | 3 | ⚡ Tap Frenzy | `MASH!` | "Who's catching up? Faster!" |
-   | 4 | 🎯 Perfect Stop | `STOP IN THE MIDDLE!` | "Steady hands, last precision round!" |
-   | 5 | ⚡ Tap Frenzy · **FINAL ×2** | `MASH!` | "Final round, double points! Everything you've got!" |
+   > ⚠️ 预设和 `quiz`、`hold`、`react` 三个新游戏还在开发中。上台前打开面板，确认能选哪套预设、选在哪里，并用 `?fast=1` 把选中的那套完整跑一遍。
+
+   每个小游戏的大字和你可以喊的话：
+
+   | 小游戏 | 大屏大字 | 你可以喊 |
+   |---|---|---|
+   | ⚡ Tap Frenzy `mash` | `MASH!` | "Mash! Mash! Both thumbs!" |
+   | 🎯 Perfect Stop `stop` | `STOP IN THE MIDDLE!` | "One tap only. Stop it dead centre!" |
+   | 🤔 Minority Wins `minority` | `PICK THE MINORITY!` | "Don't pick the popular answer. Think about what everyone else will pick!" |
+   | ✊ Faction RPS `rps` | `THROW!` | "Vote your faction's hand. The bars go dark for the last 3 seconds!" |
+   | 🧠 Quiz `quiz` | `QUIZ!` | "One answer, no changing. Fast and right wins MVP!" |
+   | ⏱️ Hold `hold` | `HOLD FOR 5 SECONDS!` | "Press, count to five in your head, let go. No peeking!" |
+   | 🟢 React `react` | `TAP ON GREEN!` | "Wait for it… wait for it… don't jump the gun!" |
+   | 最后一轮 | 加上 `FINAL ×2` | "Final round, double points! Everything you've got!" |
 
 4. 你只需要喊气氛，不用讲规则，大屏和手机上都有提示。结果画面出来时可以念一下领先的阵营。
 5. 某个阶段卡住时，按 `H`，点 **Skip phase**：
@@ -49,7 +59,7 @@
 
 ## 3. 颁奖
 
-1. 第 5 轮结束后会自动进入颁奖画面：`<阵营> WINS!`、获胜吉祥物、三个阵营的格数，还有 MVP 前三名，彩带会一直撒。
+1. 最后一轮结束后会自动进入颁奖画面：`<阵营> WINS!`、获胜吉祥物、三个阵营的格数，还有 MVP 前三名，彩带会一直撒。
 2. 可以这样说：
    > "Congratulations, [faction]! And our MVPs: [three names on screen]."
 3. 颁奖画面会一直停着，结果已写进数据库，刷新后仍然显示这个画面。

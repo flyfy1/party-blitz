@@ -122,8 +122,37 @@ All input goes through `submit_input(round_id, player_id, value)` (see §7). The
 - **Individual MVP**: 3 players from the winning faction by earliest vote
 - **Big screen**: for the first 7 seconds of PLAY, live vote bars for the three factions, **hidden for the last 3 seconds** (otherwise the last second is all counter-picking). In RESULT three giant fists slam in from three directions and the winner's fist flattens the losers
 
+### 🧠 Quiz `quiz`
+- **Question**: each round draws one three-choice trivia question with a correct answer from the bank in `shared/quiz.ts`; it is sent in `rounds.options`
+- **Phone**: big "QUIZ!", the question and three big buttons. **One tap only**, then the buttons lock
+- **Server**: `value` must be 0/1/2; an existing record is not overwritten
+- **Faction score**: faction members who answered correctly ÷ faction size (no answer counts as wrong)
+- **Individual MVP**: among correct answers, the 3 earliest submissions
+- **Big screen**: the same three transparent tubes as Minority, with faction-coloured balls dropping in; on reveal the correct tube lights up and bursts into confetti
+
+### ⏱️ Hold for 5 seconds `hold`
+- **Phone**: big "HOLD FOR 5 SECONDS!". Press and hold the button, release to stop; **no timer is shown**. The deviation `value = min(1, |held − 5000 ms| ÷ 5000)` is computed locally and only that is submitted; never releasing counts as 1
+- **Server**: `value` clamped to `[0, 1]`, overwrite
+- **Faction score**: `1 − per-capita deviation`; players who did not submit count as deviation 1
+- **Individual MVP**: the 3 players with the smallest deviation
+- **Big screen**: score bars for the three factions, plus the name and actual hold time of the player closest to 5 seconds
+
+### 🟢 Tap on green `react`
+- **Go time**: the big screen puts `go_at = starts_at + random 3–7 s` in `options`; phones and screen line up on server time
+- **Phone**: a red "WAIT" until `go_at`, then a green "TAP ON GREEN!". Reaction time `value = tap time − go_at` is computed locally and clamped to `[0, 2000]` ms; **tapping before green is a false start** and records 2000
+- **Server**: `value` clamped to `[0, 2000]`; an existing record is not overwritten
+- **Faction score**: `1 − per-capita reaction time ÷ 2000`; players who never tap count as 2000
+- **Individual MVP**: the 3 fastest reactions
+- **Big screen**: the whole screen flashes green at `go_at` and the three mascots lunge forward; the 3 fastest players and their times are shown
+
 ### Ranking rule (shared by all mini-games)
 Sort by faction score descending using **competition ranking**: if the gap between the i-th and the (i-1)-th is `<= 0.01 × the former`, it shares that rank, otherwise rank = i (rank sequences are 1,1,3 or 1,2,2 or 1,1,1). RPS has integer scores, so only equality ties. A faction with no members scores 0.
+
+### Schedule presets
+The host picks one schedule; the last round is always the final (board moves ×2):
+- **Classic 5**: 5 rounds, the default
+- **All games (8)**: `mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash` (final)
+- **Random 6**: 6 rounds drawn at random
 
 ---
 
@@ -207,7 +236,7 @@ create table if not exists rounds (
   id        uuid primary key default gen_random_uuid(),
   game_id   uuid references games(id),
   idx       int not null,
-  kind      text not null,                     -- mash | stop | minority | rps
+  kind      text not null,                     -- mash | stop | minority | rps | quiz | hold | react
   options   jsonb,                             -- 少数派题目等
   starts_at timestamptz not null,              -- PLAY 开始（服务端时间）
   ends_at   timestamptz not null,              -- PLAY 结束
@@ -251,7 +280,7 @@ Notes on the SQL comments above (left as in the source): the migration must be r
   - Bots join through this RPC too and take slots, so **reset the game** (insert a new `games` row) before the real demo
 - `submit_input(p_round uuid, p_player uuid, p_value float8) → void`
   - Rejected when `now() > ends_at + 1s` or `now() < starts_at`
-  - Validated by `kind`: `mash` non-negative and `≤ 30 × extract(epoch from now() - starts_at) + 10`, keep `greatest(old, new)`; `stop` clamped to `[0,1]`, overwrite; `minority` must be 0/1/2, existing record not overwritten; `rps` must be 0/1/2, overwrite. All keep the earliest `first_at`
+  - Validated by `kind`: `mash` non-negative and `≤ 30 × extract(epoch from now() - starts_at) + 10`, keep `greatest(old, new)`; `stop` clamped to `[0,1]`, overwrite; `minority` must be 0/1/2, existing record not overwritten; `rps` must be 0/1/2, overwrite; `quiz` must be 0/1/2, existing record not overwritten; `hold` clamped to `[0,1]`, overwrite; `react` clamped to `[0,2000]`, existing record not overwritten. All keep the earliest `first_at`
 - `get_state(p_game uuid) → {status, round_idx, round: {id, kind, options, starts_at, ends_at} | null, counts: [n0, n1, n2], state, server_now}`
 
 **Big-screen RPCs (all take `p_key`; error if it does not match `games.host_key`)**

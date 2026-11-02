@@ -14,7 +14,7 @@ Party Blitz turns the whole room into a three-faction party game: scan a QR code
 
 - Anyone in the room scans one QR code and is playing within seconds: no app, no login, no name to type. A random name and a faction are assigned server-side.
 - Players are balanced across three factions, Lava, Ocean and Forest, and their pieces race along a 20-square party board.
-- Each round is exactly 15 seconds: a 2 s intro, 10 s of play, then results. A game is five rounds alternating Tap Frenzy (mash as fast as you can) and Perfect Stop (stop the bar at the centre); Minority Wins and Faction RPS are built in too. The final round counts double.
+- Each round is exactly 15 seconds: a 2 s intro, 10 s of play, then results. Seven mini-games: Tap Frenzy (mash), Perfect Stop (stop the bar at the centre), Minority Wins (pick what the fewest people pick), Faction RPS (vote your faction's throw), Quiz (three-choice trivia), Hold for 5 Seconds (count it in your head) and Tap on Green (pure reaction time). The host picks a schedule preset: Classic 5, All games (8) or Random 6, and the final round always counts double.
 - Faction scores are per member, so a small faction can beat a big one. The big screen shows live races, results, board moves and an MVP podium.
 - Up to 120 players; anyone beyond that becomes a spectator who can still watch and cheer. A host panel and a `?bots=N` mode keep the show running even if the Wi-Fi does not.
 

@@ -120,8 +120,37 @@
 - **个人 MVP**：从获胜阵营中，按最早投票的时间取 3 人
 - **大屏**：PLAY 的前 7 秒显示三个阵营的实时投票条，**最后 3 秒遮住**（不然最后一秒全是看别人出什么再反制）。RESULT 阶段三只巨大的拳头从三个方向砸向中间，赢家的拳头把输家砸扁
 
+### 🧠 抢答 `quiz`
+- **题目**：每轮从 `shared/quiz.ts` 的题库里抽一道三选一的常识题，题目带标准答案，放在 `rounds.options` 里下发
+- **手机**：大字 "QUIZ!"、题目和三个大按钮，**只能点一次**，点完锁定
+- **服务端**：`value` 必须是 0/1/2；已有记录就不再覆盖
+- **阵营得分**：阵营里答对的成员 ÷ 阵营人数（没答的算错）
+- **个人 MVP**：从答对的人里，按最早提交的时间取前 3 名
+- **大屏**：和少数派一样的三根透明管子，答案变成阵营颜色的小球掉进去；揭晓时正确答案那根管子高亮并爆出彩带
+
+### ⏱️ 默数 5 秒 `hold`
+- **手机**：大字 "HOLD FOR 5 SECONDS!"。按住按钮开始计时，松手结束，**不显示计时**。在本地算出 `value = min(1, |按住时长 − 5000ms| ÷ 5000)`，只提交这个偏差值；一直没松手按 1 计算
+- **服务端**：`value` 夹到 `[0, 1]`，覆盖
+- **阵营得分**：`1 − 人均偏差`，没提交的人按偏差 1 计算
+- **个人 MVP**：偏差最小的 3 个人
+- **大屏**：三个阵营的得分条，外加最接近 5 秒的那个玩家的名字和实际按住时长
+
+### 🟢 绿灯反应 `react`
+- **开始时间**：大屏在 `options.go_at` 里写入 `starts_at + 随机 3–7 秒`，手机和大屏都按服务端时间对齐
+- **手机**：`go_at` 之前是红色的 "WAIT"，到点变成绿色的 "TAP ON GREEN!"。在本地算反应时间 `value = 点击时刻 − go_at`，夹到 `[0, 2000]` ms；**变绿之前就点算抢跑**，记 2000
+- **服务端**：`value` 夹到 `[0, 2000]`；已有记录就不再覆盖
+- **阵营得分**：`1 − 人均反应时间 ÷ 2000`，没点的人按 2000 计算
+- **个人 MVP**：反应最快的 3 个人
+- **大屏**：变绿那一刻全屏闪绿，三个吉祥物向前猛冲；显示最快的 3 个人和他们的反应时间
+
 ### 排名规则（所有小游戏通用）
 按阵营得分降序排序，用**竞争排名**：第 i 个和第 i-1 个的差 `<= 0.01 × 前者` 就和前者同名次，否则名次 = i（名次序列是 1,1,3 或 1,2,2 或 1,1,1）。猜拳是整数分，只有相等才并列。某个阵营一个人都没有时得分记 0。
+
+### 轮次预设
+主持人可以选一套轮次表，最后一轮都是决赛（前进格数 ×2）：
+- **Classic 5**：5 轮，默认
+- **All games (8)**：`mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`（决赛）
+- **Random 6**：随机 6 轮
 
 ---
 
@@ -205,7 +234,7 @@ create table if not exists rounds (
   id        uuid primary key default gen_random_uuid(),
   game_id   uuid references games(id),
   idx       int not null,
-  kind      text not null,                     -- mash | stop | minority | rps
+  kind      text not null,                     -- mash | stop | minority | rps | quiz | hold | react
   options   jsonb,                             -- 少数派题目等
   starts_at timestamptz not null,              -- PLAY 开始（服务端时间）
   ends_at   timestamptz not null,              -- PLAY 结束
@@ -246,7 +275,7 @@ create table if not exists inputs (
   - bot 也通过这个 RPC 加入，会占用名额，所以正式 demo 前要**重置游戏**（新建一行 games）
 - `submit_input(p_round uuid, p_player uuid, p_value float8) → void`
   - `now() > ends_at + 1s` 或 `now() < starts_at` 时拒绝
-  - 按 `kind` 校验：`mash` 非负且 `≤ 30 × extract(epoch from now() - starts_at) + 10`，取 `greatest(old, new)`；`stop` 夹到 `[0,1]`，覆盖；`minority` 必须是 0/1/2，已有记录不覆盖；`rps` 必须是 0/1/2，覆盖。都保留最早的 `first_at`
+  - 按 `kind` 校验：`mash` 非负且 `≤ 30 × extract(epoch from now() - starts_at) + 10`，取 `greatest(old, new)`；`stop` 夹到 `[0,1]`，覆盖；`minority` 必须是 0/1/2，已有记录不覆盖；`rps` 必须是 0/1/2，覆盖；`quiz` 必须是 0/1/2，已有记录不覆盖；`hold` 夹到 `[0,1]`，覆盖；`react` 夹到 `[0,2000]`，已有记录不覆盖。都保留最早的 `first_at`
 - `get_state(p_game uuid) → {status, round_idx, round: {id, kind, options, starts_at, ends_at} | null, counts: [n0, n1, n2], state, server_now}`
 
 **大屏 RPC（都要带 `p_key`，和 `games.host_key` 不一致就报错）**
