@@ -136,6 +136,13 @@
   .shots-phone .shot img { aspect-ratio: 390 / 844; object-fit: cover; }
   .shots-note { flex: 1 1 260px; display: flex; align-items: center; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
+  /* self-running demo embed */
+  .demo-embed { margin-top: 28px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 10px; }
+  .demo-embed .frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) - 6px); overflow: hidden; background: #1B1033; }
+  .demo-embed iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+  .demo-embed .under { display: flex; flex-wrap: wrap; gap: 8px 18px; justify-content: space-between; align-items: center; padding: 12px 8px 4px; color: var(--muted); font-size: 14px; }
+  .demo-embed .under a { color: var(--text); font-weight: 600; }
+
   .reveal { opacity: 0; transform: translateY(28px); }
 
   /* fixed GitHub pill, top-right */
@@ -204,6 +211,22 @@
     </div>
   </div>
 </header>
+
+<!-- ============ WATCH ============ -->
+<section>
+  <div class="wrap reveal">
+    <div class="eyebrow">Watch how it works</div>
+    <h2>Seven rounds, four phones, one big screen. On loop.</h2>
+    <p class="lead">A simulated game: the real big-screen views and the real phone screens, driven by a local clock and robot thumbs. Lobby, seven mini-games, the party board, the podium, then it starts again.</p>
+    <div class="demo-embed">
+      <div class="frame"><iframe src="demo.html" title="Party Blitz simulated game" loading="lazy"></iframe></div>
+      <div class="under">
+        <span>Simulated locally in your browser · no Supabase calls from this preview.</span>
+        <a href="demo.html" target="_blank" rel="noopener">Open full screen ↗</a>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ============ LIVE DEMO ============ -->
 <section>

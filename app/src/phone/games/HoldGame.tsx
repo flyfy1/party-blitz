@@ -72,7 +72,11 @@ export default function HoldGame(p: HoldProps) {
           <button
             className={'pg-hold-btn' + (holding ? ' holding' : '')}
             onPointerDown={(e) => {
-              e.currentTarget.setPointerCapture(e.pointerId)
+              try {
+                e.currentTarget.setPointerCapture(e.pointerId)
+              } catch {
+                /* synthetic pointer (demo) */
+              }
               down()
             }}
             onPointerUp={up}
