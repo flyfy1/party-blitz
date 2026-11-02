@@ -32,16 +32,16 @@
    - host key 只存在**这个标签页**的 sessionStorage 里，地址栏里看不到。
    - **整场都用这一个标签页，不要关掉它，也不要把地址复制到新标签页或新窗口。** 新标签页拿不到 host key，会显示 "Missing host key"。
 3. 进全屏：点大厅右上角的 **⛶ Fullscreen** 按钮，或者面板里同名的按钮。也可以在 macOS 上按 `Ctrl + Cmd + F`（Windows 上按 `F11`）。
-4. 右下角的 **Host panel 默认是打开的**。确认这几项：
+4. **Host panel 默认是收起的**，只在左下角显示一个 ⚙ 圆按钮。按 `H` 或点 ⚙ 展开，点面板右上角的 **—** 或再按 `H` 收起。展开后确认这几项：
    - `Channel` 显示绿色的 `SUBSCRIBED`。在此之前开始按钮是灰的，显示 `Waiting for channel (...)`。
    - `Players` 是 0，`Phase` 是 `lobby`。
 5. **点一下屏幕或按一下键盘**，这样声音才会解锁（浏览器要求先有一次交互）。按 `H` 本身也算。
-6. **选轮次预设**：面板里有三个按钮，只在大厅阶段出现，默认选中 **All games**。按钮下面那一行是**实际会玩的轮次**，例如 `5 rounds: mash → stop → minority → rps → mash (last ×2)`，以这一行为准。选择会记在这个标签页里，刷新后还在。
+6. **选轮次预设**：面板里有三个按钮，只在大厅阶段出现，默认选中 **All games (7)**。按钮下面那一行是**实际会玩的轮次**，例如 `7 rounds: stop → quiz → react → minority → hold → rps → mash (last ×2)`，以这一行为准。选择会记在这个标签页里，刷新后还在。
 7. 想先自己试一遍：拿手机扫码加入，看名字是否飞进大屏的阵营卡片。正式开始前按第 5 节**重置**，换一局干净的。
 
 ## 1. 大厅：扫码（60–90 秒）
 
-1. 按 `H` **把面板藏起来**，让观众只看到二维码。
+1. 按 `H` **把面板收起来**，让观众只看到二维码。收起后左下角只剩一个半透明的 ⚙。
 2. 大屏左边是二维码，下面是短网址 `party-blitz.vercel.app`。右边三张阵营卡片会实时冒出玩家名字，顶部是 `人数 / 120`。
 3. 可以这样说：
    > "Grab your phone and scan the QR code. You'll be thrown into one of three factions: Lava, Ocean or Forest. 120 spots, first come first served. If it says full, keep the page open and cheer as a spectator."
@@ -50,17 +50,15 @@
 
 ## 2. 开始比赛（自动进行，每轮约 15 秒）
 
-1. 按 `H` 打开面板，点 **Start game**，再按 `H` 把面板藏起来。
+1. 按 `H` 展开面板，点 **Start game**，再按 `H` 收起。
 2. **只需要点这一次。** 后面的轮次会自动一轮接一轮地跑，每轮约 15 秒：2 秒介绍、10 秒比赛、1.2 秒收卷、1.8 秒结果和棋盘移动。
-3. **轮次预设**（开始前在面板里选，见第 0 节第 6 步）。最后一轮都是决赛，前进格数 ×2：
+3. **轮次预设**（开始前在面板里选，见第 0 节第 6 步）。每套预设里每种小游戏**最多出现一次**，最后一轮固定是 `mash` 决赛，前进格数 ×2：
 
    | 预设 | 轮次 |
    |---|---|
-   | **All games**（默认） | `mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash` |
-   | **Classic 5** | `mash` → `stop` → `minority` → `rps` → `mash` |
-   | **Random 6** | 除 `mash` 以外随机抽 5 种，最后固定是 `mash` |
-
-   > ⚠️ 截至 commit `4f51a40`，大屏还不能显示 `quiz`、`hold`、`react`，代码会自动把它们跳过。所以现在 **All games** 实际只有 5 轮，和 Classic 5 一样；**Random 6** 实际只有 4 轮。以面板上那一行轮次列表为准。
+   | **All games (7)**（默认） | `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash` |
+   | **Classic 5** | `stop` → `minority` → `rps` → `quiz` → `mash` |
+   | **Random 6** | 从其余 6 种里随机抽 5 种（不重复），最后固定是 `mash` |
 
    每个小游戏的大字和你可以喊的话：
 
@@ -76,7 +74,7 @@
    | 最后一轮 | 加上 `FINAL ×2` | "Final round, double points! Everything you've got!" |
 
 4. 你只需要喊气氛，不用讲规则，大屏和手机上都有提示。结果画面出来时可以念一下领先的阵营。
-5. **比赛中也能加入**：大屏左下角一直有一个小二维码，写着 `Scan to join late`。迟到的人扫码后会等到下一轮开始再加入。可以提一句：
+5. **比赛中也能加入**：比赛中大屏**左上角**一直有一个小二维码，写着 `Scan to join late`。迟到的人扫码后会等到下一轮开始再加入。可以提一句：
    > "Just arrived? Scan the little QR code in the corner, you'll join from the next round."
 6. 某个阶段卡住时，按 `H`，点 **Skip phase**：
    - 在介绍、比赛或收卷阶段点，会直接结算这一轮。
@@ -134,9 +132,9 @@
 
 | 操作 | 方法 |
 |---|---|
-| 显示或隐藏面板 | 按 `H` |
+| 展开或收起面板 | 按 `H`，或点左下角的 ⚙ / 面板上的 **—** |
 | 全屏 | 大厅右上角或面板里的 **⛶ Fullscreen** |
-| 选轮次 | 大厅阶段面板里的 **All games / Classic 5 / Random 6** |
+| 选轮次 | 大厅阶段面板里的 **All games (7) / Classic 5 / Random 6** |
 | 口令输错了 | 控制台执行 `localStorage.removeItem('pb:admin')`，然后刷新 |
 | 开始 / 继续 | 面板里的 **Start game** 或 **Continue: round N**，频道变成 `SUBSCRIBED` 后才能点 |
 | 跳过卡住的阶段 | **Skip phase** |

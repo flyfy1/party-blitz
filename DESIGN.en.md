@@ -149,11 +149,11 @@ All input goes through `submit_input(round_id, player_id, value)` (see §7). The
 Sort by faction score descending using **competition ranking**: if the gap between the i-th and the (i-1)-th is `<= 0.01 × the former`, it shares that rank, otherwise rank = i (rank sequences are 1,1,3 or 1,2,2 or 1,1,1). RPS has integer scores, so only equality ties. A faction with no members scores 0.
 
 ### Schedule presets
-The host picks a schedule from the panel during the lobby (`app/src/host/presets.ts`); the choice is kept in sessionStorage. The last round is always the final (board moves ×2):
-- **All games** (default): `mash` → `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`
-- **Classic 5**: `mash` → `stop` → `minority` → `rps` → `mash`
-- **Random 6**: shuffle the 7 kinds, drop `mash`, take 5, then append `mash`
-- Kinds the big screen cannot render yet are filtered out by `SUPPORTED_KINDS`; the panel shows the filtered, actual schedule
+The host picks a schedule from the panel during the lobby (`app/src/host/presets.ts`); the choice is kept in sessionStorage. Each kind appears **at most once** per preset, and the last round is always the `mash` final (board moves ×2):
+- **All games (7)** (default): `stop` → `quiz` → `react` → `minority` → `hold` → `rps` → `mash`
+- **Classic 5**: `stop` → `minority` → `rps` → `quiz` → `mash`
+- **Random 6**: shuffle the 6 non-`mash` kinds, take 5, then append `mash`
+- Kinds the big screen cannot render are filtered out by `SUPPORTED_KINDS`; all 7 are supported now
 
 ---
 
@@ -346,7 +346,7 @@ The channel is public; anyone with the anon key can send into it. This risk is a
 
 Big-screen URL: `/?screen=1&g=<game_id>&key=<host_key>`. On first open without `g`, generate a random `host_key`, call `create_game` to create a game and write the parameters into the address bar; then immediately move `key` from the address bar into `sessionStorage`.
 
-A translucent panel in the bottom-right corner, toggled with the `H` key:
+A translucent panel in the bottom-left corner, **collapsed by default** to a round ⚙ button. Press `H` or click ⚙ to expand, click **—** to collapse; the state is kept in sessionStorage. While a game is running, a small QR code in the top-left corner lets late arrivals join:
 - Buttons: **Start game** (greyed out until the channel is `SUBSCRIBED`), **Skip current phase**, **Reset game** (creates a new game, new QR code). No "Pause": `ends_at` is already written to the database, pause cannot be built
 - Shows: players online, channel status, average RPC time, most recent error
 - URL parameters:
