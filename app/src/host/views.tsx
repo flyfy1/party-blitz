@@ -186,13 +186,20 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
   const pieceRefs = useRef<(HTMLDivElement | null)[]>([])
   const [specialHit, setSpecialHit] = useState<{ f: number; emoji: string; label: string } | null>(null)
   const [done, setDone] = useState(false)
+  // Pieces that share a cell are spread horizontally so none hides behind another.
+  const shareOffset = (cells: number[], f: number) => {
+    const same = cells.map((c, i) => (c === cells[f] ? i : -1)).filter((i) => i >= 0)
+    return (same.indexOf(f) - (same.length - 1) / 2) * 28
+  }
+  const fromOff = steps.map((_, f) => shareOffset(steps.map((s) => s.from), f))
+  const finalOff = steps.map((_, f) => shareOffset(steps.map((s) => s.final), f))
   useEffect(() => {
     const tl = gsap.timeline({ delay: 0.8, onComplete: () => setDone(true) })
     steps.forEach((s, f) => {
       const el = pieceRefs.current[f]
       if (!el) return
       const x = (c: number) => BOARD_LEFT + c * CELL_W
-      gsap.set(el, { left: x(s.from) })
+      gsap.set(el, { left: x(s.from) + fromOff[f] })
       const dir = s.landed >= s.from ? 1 : -1
       for (let c = s.from; c !== s.landed; c += dir) {
         tl.to(el, { left: x(c + dir), duration: 0.22, ease: 'power1.inOut' }, '<+=0.05')
@@ -203,7 +210,9 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
       if (s.special) {
         const sp = s.special
         tl.call(() => { setSpecialHit({ f, emoji: sp.emoji, label: sp.label }); if (sp.delta < 0) shake(300) })
-        tl.to(el, { left: x(s.final), duration: 0.5, ease: sp.delta > 0 ? 'back.out(1.5)' : 'bounce.out' }, '+=0.3')
+        tl.to(el, { left: x(s.final) + finalOff[f], duration: 0.5, ease: sp.delta > 0 ? 'back.out(1.5)' : 'bounce.out' }, '+=0.3')
+      } else {
+        tl.to(el, { left: x(s.final) + finalOff[f], duration: 0.2 })
       }
       if (s.final === BOARD_SIZE) tl.call(() => burst(0.95, 0.75, [colorOf(f)]))
     })
@@ -211,7 +220,6 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
   }, [steps])
   const order = [0, 1, 2].sort((a, b) => result.ranks[a] - result.ranks[b] || b - a)
   const medal = (r: number) => (r === 1 ? '🥇' : r === 2 ? '🥈' : '🥉')
-  const stacks: Record<number, number> = {}
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <div style={{ position: 'absolute', top: 20, left: 60, fontSize: 40, fontWeight: 800, opacity: 0.85 }}>ROUND {result.round_idx + 1} / {total} RESULTS</div>
@@ -234,7 +242,7 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
           <div key={m.player_id} className="pop" style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 36, fontWeight: 800, padding: '4px 0', animationDelay: `${0.5 + i * 0.15}s` }}>
             <span>{medal(i + 1)}</span><span>{FACTIONS[m.faction].emoji}</span>
             <span style={{ flex: 1, color: FACTIONS[m.faction].light, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.nick}</span>
-            <span style={{ opacity: 0.8 }}>{Number.isInteger(m.value) ? m.value : m.value.toFixed(2)}</span>
+            <span style={{ opacity: 0.8 }}>{result.kind === 'mash' ? `${Math.round(m.value)} taps` : result.kind === 'stop' ? `${(m.value * 100).toFixed(0)}% off` : '✓'}</span>
           </div>
         ))}
       </div>
@@ -253,10 +261,8 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
         })}
         {FACTIONS.map((f, i) => {
           const st = steps[i]
-          const stack = stacks[st.from] ?? 0
-          stacks[st.from] = stack + 1
           return (
-            <div key={f.id} ref={(el) => { pieceRefs.current[i] = el }} className="piece" style={{ left: BOARD_LEFT + st.from * CELL_W, bottom: 90 + i * 8, zIndex: 10 + i }}>
+            <div key={f.id} ref={(el) => { pieceRefs.current[i] = el }} className="piece" style={{ left: BOARD_LEFT + st.from * CELL_W + fromOff[i], bottom: 90 + i * 8, zIndex: 10 + i }}>
               <span className="float" style={{ animationDelay: `${i * 0.3}s` }}>{f.emoji}</span>
             </div>
           )
@@ -304,7 +310,7 @@ export function FinalView({ fin }: { fin: FinalPayload }) {
             const m = fin.mvp_top3[rank]
             return (
               <div key={rank} className="pop" style={{ width: 420, animationDelay: `${0.6 + i * 0.25}s` }}>
-                {m && <div style={{ fontSize: 40, fontWeight: 800, color: FACTIONS[m.faction].light, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FACTIONS[m.faction].emoji} {m.nick}</div>}
+                {m && <div style={{ fontSize: 32, fontWeight: 800, color: FACTIONS[m.faction].light, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FACTIONS[m.faction].emoji} {m.nick}</div>}
                 <div className="card" style={{ height: podiumH[rank], display: 'grid', placeItems: 'center', fontSize: 70, background: m ? FACTIONS[m.faction].dark : undefined }}>
                   {medal[rank]} {m ? <span style={{ fontSize: 40 }}>{m.points} pts</span> : ''}
                 </div>
@@ -324,6 +330,7 @@ const hash01 = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length
 export function Darts({ rows, counts, secondsLeft, collecting, roundIdx }: { rows: InputRow[]; counts: Triple; secondsLeft: number; collecting: boolean; roundIdx: number }) {
   const cx = 960, cy = 590, R = 400
   const shown = rows.slice(0, 300)
+  const closest = [...rows].sort((a, b) => a.value - b.value).slice(0, 3).map((r) => r.player_id)
   const best = collecting && rows.length ? rows.reduce((a, b) => (b.value < a.value ? b : a)) : null
   const total = counts.reduce((a, b) => a + b, 0)
   const m = KIND_META.stop
@@ -342,7 +349,7 @@ export function Darts({ rows, counts, secondsLeft, collecting, roundIdx }: { row
         const rad = Math.min(1, Math.max(0, r.value)) * R
         const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad
         const isBest = best?.player_id === r.player_id
-        const near = r.value < 0.12 || isBest
+        const near = closest.includes(r.player_id)
         return (
           <div key={r.player_id} className="pop" style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', zIndex: isBest ? 40 : near ? 30 : 20 }}>
             <div style={{ width: isBest ? 54 : 26, height: isBest ? 54 : 26, borderRadius: '50%', background: colorOf(r.faction), border: '4px solid #1B1033', boxShadow: '0 4px 0 rgba(0,0,0,0.4)', margin: '0 auto' }} />
