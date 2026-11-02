@@ -310,7 +310,7 @@ export function FinalView({ fin }: { fin: FinalPayload }) {
             const m = fin.mvp_top3[rank]
             return (
               <div key={rank} className="pop" style={{ width: 420, animationDelay: `${0.6 + i * 0.25}s` }}>
-                {m && <div style={{ fontSize: 32, fontWeight: 800, color: FACTIONS[m.faction].light, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{FACTIONS[m.faction].emoji} {m.nick}</div>}
+                {m && <div style={{ fontSize: 32, fontWeight: 800, lineHeight: 1.1, color: FACTIONS[m.faction].light, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{FACTIONS[m.faction].emoji} {m.nick}</div>}
                 <div className="card" style={{ height: podiumH[rank], display: 'grid', placeItems: 'center', fontSize: 70, background: m ? FACTIONS[m.faction].dark : undefined }}>
                   {medal[rank]} {m ? <span style={{ fontSize: 40 }}>{m.points} pts</span> : ''}
                 </div>

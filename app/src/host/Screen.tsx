@@ -16,6 +16,7 @@ import { pickQuiz, parseQuizOptions } from '../shared/quiz'
 import { quizExtra, holdExtra } from '../shared/scoring.p3'
 import { makeReactOptions } from '../shared/react'
 import { sfx, unlockSfx } from './sfx'
+import { isMusicMuted, setMusic, toggleMusicMute, unlockMusic } from './music'
 import { avgLatency, channelName, rpc, supabase } from '../shared/supabase'
 import { now, parseTs } from '../shared/time'
 import { PRESETS, applyPreset, loadSchedule } from './presets'
@@ -90,6 +91,12 @@ export default function Screen() {
   const [authError, setAuthError] = useState('')
   const [hostsOnly, setHostsOnly] = useState(false)
   const fs = useFullscreen()
+  const [muted, setMuted] = useState(isMusicMuted)
+  // Background track follows the phase.
+  useEffect(() => {
+    const ph = snap.phase
+    setMusic(ph === 'lobby' ? 'lobby' : ph === 'intro' || ph === 'play' || ph === 'collect' ? 'play' : ph === 'result' ? 'result' : ph === 'final' ? 'final' : 'off')
+  }, [snap.phase])
   const S = useRef<Internal>({
     gameId: '', key: '', roundIdx: -1, round: null, positions: [0, 0, 0], mvpPoints: {}, counts: [0, 0, 0], lastLive: [],
     finalizing: false, finalized: false, nextAt: 0, starting: false, retryAt: 0, skip: false, channel: null, bots: null,
@@ -200,13 +207,14 @@ export default function Screen() {
     S.starting = true
     try {
       const kind = S.schedule[idx]
+      const playMs = kind === 'hold' ? Math.max(T.play, 7000) : T.play
       const isFinal = idx === S.schedule.length - 1
       const options: unknown = kind === 'minority' ? pickQuestion()
         : kind === 'quiz' ? pickQuiz()
-        : kind === 'react' ? makeReactOptions(now() + T.intro)
+        : kind === 'react' ? (() => { const o = makeReactOptions(now() + T.intro); const after = Math.min(o.go_after_ms ?? 4000, Math.max(1000, playMs - 2500)); return { go_after_ms: after, go_at: new Date(now() + T.intro + after).toISOString() } })()
         : null
       const r = await rpc<{ round_id: string; starts_at: string; ends_at: string }>('start_round', {
-        p_game: S.gameId, p_key: S.key, p_idx: idx, p_kind: kind, p_options: options, p_intro_ms: T.intro, p_play_ms: T.play,
+        p_game: S.gameId, p_key: S.key, p_idx: idx, p_kind: kind, p_options: options, p_intro_ms: T.intro, p_play_ms: playMs,
       }, { retries: 2 })
       // authoritative counts for scoring
       try { const st = await rpc<StateResponse>('get_state', { p_game: S.gameId }); S.counts = st.counts; patch({ counts: st.counts }) } catch { /* keep lobby counts */ }
@@ -304,8 +312,12 @@ export default function Screen() {
 
   // ── host panel actions + H key ──
   useEffect(() => {
-    const on = (e: KeyboardEvent) => { unlockSfx(); if (e.key === 'h' || e.key === 'H') setPanel((v) => !v) }
-    const unlock = () => unlockSfx()
+    const on = (e: KeyboardEvent) => {
+      unlockSfx(); unlockMusic()
+      if (e.key === 'h' || e.key === 'H') setPanel((v) => !v)
+      if (e.key === 'm' || e.key === 'M') setMuted(toggleMusicMute())
+    }
+    const unlock = () => { unlockSfx(); unlockMusic() }
     window.addEventListener('keydown', on)
     window.addEventListener('pointerdown', unlock)
     return () => { window.removeEventListener('keydown', on); window.removeEventListener('pointerdown', unlock) }
@@ -413,6 +425,7 @@ export default function Screen() {
         isFullscreen={fs.full} onFullscreen={fs.enter}
         presets={PRESETS} presetId={snap.presetId} schedule={snap.schedule} onPreset={onPreset}
         onToggle={() => setPanel((v) => !v)}
+        musicMuted={muted} onMusic={() => setMuted(toggleMusicMute())}
       />}
     </>
   )

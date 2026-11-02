@@ -23,6 +23,8 @@ export interface PanelProps {
   schedule: string[]
   onPreset: (id: string) => void
   onToggle: () => void
+  musicMuted: boolean
+  onMusic: () => void
 }
 
 export function HostPanel(p: PanelProps) {
@@ -35,7 +37,10 @@ export function HostPanel(p: PanelProps) {
         <div style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>Host panel <span style={{ opacity: 0.5, fontWeight: 400 }}>(H)</span></div>
         <button className="panel-min" title="Minimise" onClick={p.onToggle}>—</button>
       </div>
-      {!p.isFullscreen && <button onClick={p.onFullscreen}>⛶ Fullscreen</button>}
+      <div style={{ display: 'flex', gap: 6 }}>
+        {!p.isFullscreen && <button style={{ margin: 0 }} onClick={p.onFullscreen}>⛶ Fullscreen</button>}
+        <button style={{ margin: 0 }} onClick={p.onMusic}>{p.musicMuted ? '🔇 Music off (M)' : '🎵 Music on (M)'}</button>
+      </div>
       {p.phase === 'lobby' && (
         <div style={{ margin: '6px 0' }}>
           <div style={{ display: 'flex', gap: 6 }}>
