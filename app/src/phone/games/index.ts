@@ -1,3 +1,5 @@
 export { default as MinorityGame } from './MinorityGame'
 export { default as RpsGame } from './RpsGame'
+export { default as QuizGame } from './QuizGame'
+export { default as HoldGame } from './HoldGame'
 export * from './types'

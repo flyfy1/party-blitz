@@ -7,6 +7,7 @@ import { minorityExtra } from '../../shared/extras'
 import { parseMinorityOptions } from '../../shared/questions'
 import type { InputRow, Triple } from '../../shared/types'
 import { burst, shake } from '../views'
+import { Tubes } from './Tubes'
 import './stages.css'
 
 export interface MinorityStageProps {
@@ -19,31 +20,9 @@ export interface MinorityStageProps {
   options?: unknown
 }
 
-const GLASS_W = 368 // 380 - 2×6 border
-const GLASS_H = 528
-
-/** 管子里第 k 颗球的位置（从底部往上一排排堆） */
-function layout(n: number) {
-  let d = 46
-  let cols = Math.floor((GLASS_W - 12) / d)
-  while (Math.ceil(n / cols) * d > GLASS_H - 40 && d > 18) {
-    d -= 4
-    cols = Math.floor((GLASS_W - 12) / d)
-  }
-  const pad = (GLASS_W - cols * d) / 2
-  return { d, cols, pad }
-}
-
 export function MinorityStage({ rows, counts, secondsLeft, collecting, roundIdx, options }: MinorityStageProps) {
   const q = useMemo(() => parseMinorityOptions(options), [options])
   const m = KIND_META.minority
-  // 按提交先后排序，这样新球永远落在最上面
-  const sorted = useMemo(() => [...rows].sort((a, b) => Date.parse(a.first_at) - Date.parse(b.first_at)), [rows])
-  const perTube: InputRow[][] = [[], [], []]
-  for (const r of sorted) {
-    const o = Math.round(r.value)
-    if (o >= 0 && o <= 2) perTube[o].push(r)
-  }
   const ex = useMemo(() => minorityExtra(rows), [rows])
   const rare = new Set(collecting ? ex.minority : [])
   const total = counts[0] + counts[1] + counts[2]
@@ -78,41 +57,7 @@ export function MinorityStage({ rows, counts, secondsLeft, collecting, roundIdx,
       ) : (
         <div className="mn-q">{q.q}</div>
       )}
-      <div className="mn-tubes">
-        {perTube.map((balls, o) => {
-          const { d, cols, pad } = layout(balls.length)
-          const isRare = rare.has(o)
-          const cls = 'mn-tube' + (collecting ? (isRare ? ' rare' : ' dim') : '')
-          return (
-            <div key={o} className={cls}>
-              <div className="mn-glass">
-                {balls.map((r, k) => {
-                  const col = k % cols
-                  const row = Math.floor(k / cols)
-                  return (
-                    <div
-                      key={r.player_id}
-                      className="mn-ball"
-                      style={{
-                        width: d - 4,
-                        height: d - 4,
-                        left: pad + col * d + 2,
-                        bottom: 10 + row * d,
-                        background: FACTIONS[r.faction]?.color ?? '#fff',
-                      }}
-                    />
-                  )
-                })}
-                {collecting ? <div className="mn-count pop">{isRare ? '👑 ' : ''}{balls.length}</div> : <div className="mn-count hidden-q">?</div>}
-              </div>
-              <div className="mn-label">
-                <span className="em">{q.emoji[o]}</span>
-                {q.choices[o]}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+      <Tubes rows={rows} labels={q.choices.map((c, i) => ({ emoji: q.emoji[i], text: c }))} collecting={collecting} highlight={rare} />
     </div>
   )
 }

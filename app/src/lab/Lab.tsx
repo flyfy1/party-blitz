@@ -5,22 +5,28 @@ import { FACTIONS } from '../shared/factions'
 import { scoreRound } from '../shared/scoring'
 import { FAST, NORMAL, phaseAt, type Phase, type Timing } from '../shared/timing'
 import type { Faction, InputRow, ResultPayload, Triple } from '../shared/types'
-import { MinorityGame, RpsGame } from '../phone/games'
+import { HoldGame, MinorityGame, QuizGame, RpsGame } from '../phone/games'
 import { minorityExtra, rpsExtra, type MinorityExtra, type RpsExtra } from '../shared/extras'
 import { pickQuestion, type MinorityQuestion } from '../shared/questions'
+import { pickQuiz, type QuizQuestion } from '../shared/quiz'
+import { HOLD_TARGET_MS, holdExtra, quizExtra, type HoldExtra, type QuizExtra } from '../shared/scoring.p3'
+import { parseQuizOptions } from '../shared/quiz'
+import { HoldStage } from '../host/views/HoldStage'
+import { QuizStage } from '../host/views/QuizStage'
 import { MinorityStage } from '../host/views/MinorityStage'
 import { RpsStage } from '../host/views/RpsStage'
 import '../host/host.css'
 import './lab.css'
 
-type Game = 'minority' | 'rps'
+type Game = 'minority' | 'rps' | 'quiz' | 'hold'
 type Scenario = 'random' | 'win' | 'mvp' | 'lose' | 'tie'
 type View = 'phone' | 'stage' | 'both'
 const ME = 'me-0000'
 
 function readParams() {
   const q = new URLSearchParams(location.search)
-  const game = (q.get('game') === 'rps' ? 'rps' : 'minority') as Game
+  const g = q.get('game')
+  const game = (g === 'rps' || g === 'quiz' || g === 'hold' ? g : 'minority') as Game
   const faction = (Math.min(2, Math.max(0, Number(q.get('faction') ?? 0))) || 0) as Faction
   const fast = !!q.get('fast')
   const bots = Math.max(3, Number(q.get('bots') ?? 120))
@@ -47,12 +53,21 @@ function writeParams(p: ReturnType<typeof readParams>) {
  *  minority  win/mvp → 最后一个选项最稀有（选它就赢）；lose → 第一个选项最热门（选它就输）
  *  rps       win/mvp → 我的阵营出 ✊，其他阵营出 ✌️（投 ✊ 就赢）；lose → 其他阵营出 ✋；tie → 全部 ✊
  */
-function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, startsAt: number, playMs: number): InputRow[] {
+function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, startsAt: number, playMs: number, answer = 0): InputRow[] {
   const rows: InputRow[] = []
   for (let i = 0; i < n; i++) {
     const f = i % 3
     let v: number
-    if (game === 'minority') {
+    if (game === 'quiz') {
+      // 约 55% 答对；win/mvp 时其他阵营只有 25% 答对
+      const pCorrect = (scenario === 'win' || scenario === 'mvp') && f !== faction ? 0.25 : scenario === 'lose' && f === faction ? 0.15 : 0.55
+      v = Math.random() < pCorrect ? answer : (answer + 1 + Math.floor(Math.random() * 2)) % 3
+    } else if (game === 'hold') {
+      // 偏差：正态分布 ~0.12（0.6 秒），win/mvp 时其他阵营差 3 倍
+      const g = Math.abs((Math.random() + Math.random() + Math.random() - 1.5) * 0.16)
+      const worse = (scenario === 'win' || scenario === 'mvp') && f !== faction ? 3 : scenario === 'lose' && f === faction ? 3 : 1
+      v = Math.min(1, g * worse)
+    } else if (game === 'minority') {
       const weights = [0.5, 0.3, 0.2]
       if (scenario === 'win' || scenario === 'mvp') weights[2] = 0.05
       if (scenario === 'lose') weights[0] = 0.75
@@ -78,7 +93,7 @@ function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, 
     }
     if (Math.random() < 0.08) continue // 约 8% 的人没提交
     // 大多数人在前 60% 的时间里提交
-    const t = Math.pow(Math.random(), 1.6) * playMs * 0.85 + 200
+    const t = game === 'hold' ? HOLD_TARGET_MS + (Math.random() - 0.5) * 2000 : Math.pow(Math.random(), 1.6) * playMs * 0.85 + 200
     rows.push({ player_id: `bot-${i}`, nickname: `Bot ${i}`, faction: f, value: v, first_at: new Date(startsAt + t).toISOString() })
   }
   return rows
@@ -87,24 +102,26 @@ function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, 
 interface Round {
   startsAt: number
   endsAt: number
-  options: MinorityQuestion
+  options: MinorityQuestion | QuizQuestion
   bots: InputRow[]
 }
 
 export default function Lab() {
   const [params, setParams] = useState(readParams)
-  const timing: Timing = params.fast ? FAST : NORMAL
+  const timing: Timing = params.fast && params.game !== 'hold' ? FAST : NORMAL
   const mkRound = useCallback((p: typeof params): Round => {
-    const t = p.fast ? FAST : NORMAL
+    const t = p.fast && p.game !== 'hold' ? FAST : NORMAL // hold 需要 5 秒，fast 模式玩不了
     const startsAt = Date.now() + t.intro
-    return { startsAt, endsAt: startsAt + t.play, options: pickQuestion(), bots: botInputs(p.game, p.bots, p.faction, p.scenario, startsAt, t.play) }
+    const options = p.game === 'quiz' ? pickQuiz() : pickQuestion()
+    const answer = p.game === 'quiz' ? (options as QuizQuestion).answer : 0
+    return { startsAt, endsAt: startsAt + t.play, options, bots: botInputs(p.game, p.bots, p.faction, p.scenario, startsAt, t.play, answer) }
   }, [])
   const [round, setRound] = useState<Round>(() => mkRound(params))
   const [phase, setPhase] = useState<Phase>('intro')
   const [live, setLive] = useState<InputRow[]>([])
   const [secondsLeft, setSecondsLeft] = useState(0)
   const [result, setResult] = useState<ResultPayload | null>(null)
-  const [extra, setExtra] = useState<MinorityExtra | RpsExtra | null>(null)
+  const [extra, setExtra] = useState<MinorityExtra | RpsExtra | QuizExtra | HoldExtra | null>(null)
   const [isMvp, setIsMvp] = useState(false)
   const [log, setLog] = useState<string[]>([])
   const me = useRef<InputRow | null>(null)
@@ -149,9 +166,14 @@ export default function Lab() {
         scored.current = true
         const inputs = [...round.bots]
         if (me.current) inputs.push(me.current)
-        const r = scoreRound(params.game, inputs, counts, [3, 5, 4], false)
+
+        const r = scoreRound(params.game, inputs, counts, [3, 5, 4], false, round.options)
         setResult({ type: 'result', round_idx: 2, kind: params.game, ranks: r.ranks, scores: r.scores, moves: r.moves, positions: r.positions, mvp: r.mvp })
-        setExtra(params.game === 'minority' ? minorityExtra(inputs) : rpsExtra(inputs))
+        setExtra(
+          params.game === 'quiz' ? quizExtra(inputs, parseQuizOptions(round.options).answer)
+          : params.game === 'hold' ? holdExtra(inputs, counts)
+          : params.game === 'minority' ? minorityExtra(inputs) : rpsExtra(inputs),
+        )
         setIsMvp(r.mvp.some((m) => m.player_id === ME))
       }
       raf = requestAnimationFrame(tick)
@@ -174,6 +196,10 @@ export default function Lab() {
   const phoneEl =
     params.game === 'minority' ? (
       <MinorityGame {...common} options={round.options} extra={phase === 'result' ? (extra as MinorityExtra) : null} />
+    ) : params.game === 'quiz' ? (
+      <QuizGame {...common} options={round.options} extra={phase === 'result' ? (extra as QuizExtra) : null} />
+    ) : params.game === 'hold' ? (
+      <HoldGame {...common} extra={phase === 'result' ? (extra as HoldExtra) : null} />
     ) : (
       <RpsGame {...common} extra={phase === 'result' ? (extra as RpsExtra) : null} />
     )
@@ -189,6 +215,10 @@ export default function Lab() {
       </div>
     ) : params.game === 'minority' ? (
       <MinorityStage {...stageProps} options={round.options} />
+    ) : params.game === 'quiz' ? (
+      <QuizStage {...stageProps} options={round.options} />
+    ) : params.game === 'hold' ? (
+      <HoldStage {...stageProps} />
     ) : (
       <RpsStage {...stageProps} />
     )
@@ -203,6 +233,8 @@ export default function Lab() {
         <select value={params.game} onChange={(e) => set('game', e.target.value as Game)}>
           <option value="minority">🤔 Minority</option>
           <option value="rps">✊ RPS</option>
+          <option value="quiz">🧠 Quiz</option>
+          <option value="hold">⏱️ Hold</option>
         </select>
         <select value={params.view} onChange={(e) => set('view', e.target.value as View)}>
           <option value="phone">📱 phone</option>

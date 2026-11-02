@@ -10,5 +10,7 @@ export const KIND_META = {
   stop: { icon: '🎯', title: 'Perfect Stop', verb: 'STOP IN THE MIDDLE!', hint: 'One tap. Stop the bar at the center' },
   minority: { icon: '🤔', title: 'Minority Wins', verb: 'PICK THE MINORITY!', hint: 'Choose what fewest people choose' },
   rps: { icon: '✊', title: 'Faction RPS', verb: 'THROW!', hint: 'Vote your faction’s hand' },
+  quiz: { icon: '🧠', title: 'Pop Quiz', verb: 'QUIZ!', hint: 'One tap. Pick the right answer' },
+  hold: { icon: '⏱️', title: 'Hold Five', verb: 'HOLD FOR 5 SECONDS!', hint: 'Press, hold, release at exactly 5.00 s' },
   react: { icon: '🟢', title: 'Reaction', verb: 'TAP ON GREEN!', hint: 'Wait for green, then tap as fast as you can' },
 } as const

@@ -129,3 +129,25 @@
 
 /* 猜拳：最后 3 秒遮住提示 */
 .pg-hidden-note { font-size: 13px; opacity: .9; font-weight: 700; }
+
+/* ── Hold Five ── */
+.pg-hold { flex: 1; display: grid; place-items: center; min-height: 0; }
+.pg-hold-btn { position: relative; width: min(78vw, 320px); aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.2); border: 6px solid rgba(255,255,255,.7); box-shadow: 0 10px 0 rgba(0,0,0,.25); color: #fff; font-weight: 800; font-size: clamp(30px, 9vw, 44px); display: grid; place-items: center; touch-action: none; transition: transform .1s, background .2s; }
+.pg-hold-btn.holding { transform: scale(.94); background: #fff; color: var(--fcd); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+.pg-hold-btn .ring { position: absolute; inset: -22px; border-radius: 50%; border: 6px solid rgba(255,255,255,.5); opacity: 0; }
+.pg-hold-btn.holding .ring { animation: pg-ring 1s ease-out infinite; }
+@keyframes pg-ring { 0% { transform: scale(.85); opacity: .9; } 100% { transform: scale(1.25); opacity: 0; } }
+.pg-hold-btn .lbl { position: relative; }
+.pg-hold-done { text-align: center; }
+.pg-hold-done .big { font-size: clamp(64px, 20vw, 96px); font-weight: 800; line-height: 1; text-shadow: 0 5px 0 rgba(0,0,0,.25); }
+.pg-hold-done .off { font-size: 22px; font-weight: 800; margin-top: 10px; opacity: .95; }
+.pg-devs { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 14px; min-height: 0; }
+.pg-dev { display: flex; align-items: center; gap: 12px; font-weight: 800; }
+.pg-dev .em { font-size: 34px; line-height: 1; }
+.pg-dev .bar { flex: 1; height: 26px; border-radius: 13px; background: rgba(0,0,0,.3); overflow: hidden; }
+.pg-dev .bar i { display: block; height: 100%; border-radius: 13px; animation: pg-grow-x .7s cubic-bezier(.2,.9,.3,1.2) both; transform-origin: left; }
+.pg-dev .n { width: 92px; text-align: right; font-size: 15px; }
+.pg-result.gold .pg-dev .bar { background: rgba(255,255,255,.45); }
+@keyframes pg-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.pg-best { text-align: center; font-weight: 800; font-size: 17px; background: rgba(0,0,0,.25); border-radius: 14px; padding: 10px; animation: pg-fade .4s .8s both; }
+.pg-result.gold .pg-best { background: rgba(255,255,255,.45); }

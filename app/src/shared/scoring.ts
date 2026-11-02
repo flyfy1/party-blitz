@@ -1,12 +1,16 @@
 // 计分、排名、棋盘移动：全部是纯函数，有单元测试（DESIGN.md §4 §5）。
 import { BOARD_SIZE, SPECIAL_CELLS } from './board'
+import { parseQuizOptions } from './quiz'
+import { holdScores, mvpOfP3, quizScores } from './scoring.p3'
 import type { FinalPayload, GameState, InputRow, Kind, MvpEntry, Triple } from './types'
 import { reactMvp, reactScores } from './react'
 
 const EMPTY: Triple = [0, 0, 0]
 
 /** 阵营得分（人均；分母是阵营全部成员数 counts） */
-export function factionScores(kind: Kind, inputs: InputRow[], counts: Triple): Triple {
+export function factionScores(kind: Kind, inputs: InputRow[], counts: Triple, options?: unknown): Triple {
+  if (kind === 'quiz') return quizScores(inputs, counts, parseQuizOptions(options).answer)
+  if (kind === 'hold') return holdScores(inputs, counts)
   const out: Triple = [...EMPTY]
   for (let f = 0; f < 3; f++) {
     const n = counts[f]
@@ -116,8 +120,9 @@ export function advance(positions: Triple, moves: Triple): { positions: Triple; 
 }
 
 /** 本轮 MVP 前三 */
-export function mvpOf(kind: Kind, inputs: InputRow[]): MvpEntry[] {
+export function mvpOf(kind: Kind, inputs: InputRow[], options?: unknown): MvpEntry[] {
   if (kind === 'react') return reactMvp(inputs)
+  if (kind === 'quiz' || kind === 'hold') return mvpOfP3(kind, inputs, kind === 'quiz' ? parseQuizOptions(options).answer : 0)
   let rows = [...inputs]
   const byTime = (a: InputRow, b: InputRow) => Date.parse(a.first_at) - Date.parse(b.first_at)
   if (kind === 'mash') rows.sort((a, b) => b.value - a.value || byTime(a, b))
@@ -168,10 +173,12 @@ export function scoreRound(
   counts: Triple,
   positions: Triple,
   final: boolean,
+  /** rounds.options（quiz 需要正确答案） */
+  options?: unknown,
 ): { scores: Triple; ranks: Triple; moves: Triple; positions: Triple; steps: MoveStep[]; mvp: MvpEntry[] } {
-  const scores = factionScores(kind, inputs, counts)
+  const scores = factionScores(kind, inputs, counts, options)
   const ranks = rank(scores, kind === 'rps')
   const moves = movesFor(ranks, final)
   const adv = advance(positions, moves)
-  return { scores, ranks, moves, positions: adv.positions, steps: adv.steps, mvp: mvpOf(kind, inputs) }
+  return { scores, ranks, moves, positions: adv.positions, steps: adv.steps, mvp: mvpOf(kind, inputs, options) }
 }
