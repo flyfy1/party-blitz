@@ -21,3 +21,8 @@ body {
 }
 .cn { font-family: var(--font-cn); }
 button { font: inherit; border: none; cursor: pointer; }
+body {
+  position: fixed;
+  inset: 0;
+  -webkit-touch-callout: none;
+}

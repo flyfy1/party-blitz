@@ -1,11 +1,12 @@
--- PARTY BLITZ：基础 schema 和 RPC（见 ../../../DESIGN.md §7）
+-- PARTY BLITZ：schema 和 RPC（见 ../../../DESIGN.md §7，v2）
+-- 可以反复执行：create ... if not exists / create or replace / drop ... if exists。
 -- 四张表都开启 RLS 且不加 policy，anon 角色只能通过 security definer RPC 访问数据。
 
 create sequence if not exists join_seq;
 
 create table if not exists games (
   id          uuid primary key default gen_random_uuid(),
-  host_key    text not null,                          -- 大屏 URL 里的 ?key=，host RPC 都要校验
+  host_key    text not null,
   status      text not null default 'lobby',          -- lobby | playing | finished
   max_players int  not null default 120,
   round_idx   int  not null default -1,
@@ -14,13 +15,13 @@ create table if not exists games (
 );
 
 create table if not exists players (
-  id        uuid primary key,
   game_id   uuid not null references games(id) on delete cascade,
+  id        uuid not null,                             -- 客户端生成，localStorage，跨局不变
   nickname  text not null,
   faction   smallint not null check (faction between 0 and 2),
-  joined_at timestamptz not null default now()
+  joined_at timestamptz not null default now(),
+  primary key (game_id, id)
 );
-create index if not exists players_game_idx on players(game_id, joined_at);
 
 create table if not exists rounds (
   id        uuid primary key default gen_random_uuid(),
@@ -28,14 +29,14 @@ create table if not exists rounds (
   idx       int  not null,
   kind      text not null,                            -- mash | stop | minority | rps
   options   jsonb,
-  starts_at timestamptz not null,                     -- PLAY 开始（服务端时间）
-  ends_at   timestamptz not null,                     -- PLAY 结束
+  starts_at timestamptz not null,
+  ends_at   timestamptz not null,
   unique (game_id, idx)
 );
 
 create table if not exists inputs (
   round_id   uuid not null references rounds(id) on delete cascade,
-  player_id  uuid not null references players(id) on delete cascade,
+  player_id  uuid not null,                           -- 不建外键
   faction    smallint not null,
   value      double precision not null,
   first_at   timestamptz not null default now(),
@@ -43,42 +44,62 @@ create table if not exists inputs (
   primary key (round_id, player_id)
 );
 
+-- v1 → v2：players 主键从 (id) 改成 (game_id, id)，inputs 去掉对 players 的外键
+do $$
+declare v_def text;
+begin
+  select pg_get_constraintdef(oid) into v_def
+    from pg_constraint where conrelid = 'public.players'::regclass and contype = 'p';
+  if v_def = 'PRIMARY KEY (id)' then
+    alter table public.inputs  drop constraint if exists inputs_player_id_fkey;
+    alter table public.players drop constraint players_pkey;
+    alter table public.players add primary key (game_id, id);
+  end if;
+end $$;
+alter table inputs drop constraint if exists inputs_player_id_fkey;
+create index if not exists players_game_idx on players(game_id, joined_at);
+
 alter table games   enable row level security;
 alter table players enable row level security;
 alter table rounds  enable row level security;
 alter table inputs  enable row level security;
 
+drop function if exists round_inputs(uuid, text);
+drop function if exists _random_nick();
+
 -- ── 内部工具函数（不对外）──────────────────────────────────
 
-create or replace function _random_nick() returns text
+create or replace function _random_nick(n bigint) returns text
 language sql volatile set search_path = public as $$
-  select (array['勇敢的','暴躁的','闪电','佛系','神秘','饥饿的','无敌','害羞的','疯狂','淡定',
-                '超能','迷糊','傲娇','元气','睡不醒的','快乐','隐形','狂野','优雅的','热血'])[1 + floor(random() * 20)::int]
-      || (array['榴莲','叉烧包','咖椰吐司','椰浆饭','鸡饭','珍珠奶茶','煎饺','豆花','炒粿条','肉骨茶',
-                '辣椒蟹','冰淇淋','沙爹','叻沙','薄饼','咖喱角','烤鸡翅','红豆冰','牛油果','芒果糯米饭'])[1 + floor(random() * 20)::int];
+  select (array['Brave','Grumpy','Lightning','Chill','Mystic','Hungry','Mighty','Shy','Wild','Cool',
+                'Super','Dizzy','Sassy','Peppy','Sleepy','Happy','Ghost','Feral','Fancy','Blazing'])[1 + floor(random() * 20)::int]
+      || ' ' ||
+         (array['Durian','Char Siu Bao','Kaya Toast','Nasi Lemak','Chicken Rice','Bubble Tea','Dumpling','Tau Huay','Char Kway Teow','Bak Kut Teh',
+                'Chilli Crab','Ice Cream','Satay','Laksa','Popiah','Curry Puff','Chicken Wing','Ice Kacang','Avocado','Mango Sticky Rice'])[1 + floor(random() * 20)::int]
+      || ' #' || (n % 100);
 $$;
 
 create or replace function _check_host(p_game uuid, p_key text) returns void
 language plpgsql set search_path = public as $$
 begin
-  if not exists (select 1 from games where id = p_game and host_key = p_key) then
+  if p_game is null or not exists (select 1 from games where id = p_game and host_key = p_key) then
     raise exception 'invalid host key';
   end if;
 end $$;
 
 -- ── 玩家 RPC ─────────────────────────────────────────────
 
--- 同一个 player id 重复调用返回原阵营；满员返回 {full: true}
 create or replace function join_game(p_game uuid, p_player uuid)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare
   v_player players;
   v_max    int;
   v_count  int;
+  v_seq    bigint;
   v_nick   text;
   v_fac    smallint;
 begin
-  select * into v_player from players where id = p_player and game_id = p_game;
+  select * into v_player from players where game_id = p_game and id = p_player;
   if found then
     return jsonb_build_object('faction', v_player.faction, 'nickname', v_player.nickname, 'server_now', now());
   end if;
@@ -91,13 +112,14 @@ begin
     return jsonb_build_object('full', true, 'server_now', now());
   end if;
 
-  v_nick := _random_nick();
-  v_fac  := (nextval('join_seq') % 3)::smallint;
-  insert into players (id, game_id, nickname, faction) values (p_player, p_game, v_nick, v_fac);
+  v_seq  := nextval('join_seq');
+  v_fac  := (v_seq % 3)::smallint;
+  v_nick := _random_nick(v_seq);
+  insert into players (game_id, id, nickname, faction) values (p_game, p_player, v_nick, v_fac);
   return jsonb_build_object('faction', v_fac, 'nickname', v_nick, 'server_now', now());
 end $$;
 
--- mash：value 只增不减，且不超过 30 次/秒 × 已玩秒数 + 10；其他小游戏覆盖旧值
+-- 按 rounds.kind 校验 value；都保留最早的 first_at
 create or replace function submit_input(p_round uuid, p_player uuid, p_value float8)
 returns void language plpgsql security definer set search_path = public as $$
 declare
@@ -111,24 +133,33 @@ begin
   if now() < v_round.starts_at or now() > v_round.ends_at + interval '1 second' then
     return;
   end if;
-  select faction into v_fac from players where id = p_player and game_id = v_round.game_id;
+  select faction into v_fac from players where game_id = v_round.game_id and id = p_player;
   if not found then raise exception 'not a player'; end if;
 
   if v_round.kind = 'mash' then
     v_cap   := 30 * extract(epoch from least(now(), v_round.ends_at) - v_round.starts_at) + 10;
-    v_value := least(greatest(p_value, 0), v_cap);
+    v_value := least(greatest(coalesce(p_value, 0), 0), v_cap);
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, v_value)
+    on conflict (round_id, player_id) do update
+      set value = greatest(inputs.value, excluded.value), updated_at = now();
+  elsif v_round.kind = 'stop' then
+    v_value := least(greatest(coalesce(p_value, 1), 0), 1);
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, v_value)
+    on conflict (round_id, player_id) do update set value = excluded.value, updated_at = now();
+  elsif v_round.kind = 'minority' then
+    if p_value is null or p_value not in (0, 1, 2) then raise exception 'bad value'; end if;
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, p_value)
+    on conflict (round_id, player_id) do nothing;
+  elsif v_round.kind = 'rps' then
+    if p_value is null or p_value not in (0, 1, 2) then raise exception 'bad value'; end if;
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, p_value)
+    on conflict (round_id, player_id) do update set value = excluded.value, updated_at = now();
   else
-    v_value := p_value;
+    raise exception 'unknown kind %', v_round.kind;
   end if;
-
-  insert into inputs (round_id, player_id, faction, value)
-  values (p_round, p_player, v_fac, v_value)
-  on conflict (round_id, player_id) do update set
-    value = case when v_round.kind = 'mash' then greatest(inputs.value, v_value) else v_value end,
-    updated_at = now();
 end $$;
 
--- 手机进场、重连、兜底轮询；大屏大厅也用它（players 用来画名字泡泡）
+-- 手机进场、重连、兜底轮询（大厅 3s / 比赛 2s）
 create or replace function get_state(p_game uuid)
 returns jsonb language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
@@ -144,10 +175,7 @@ returns jsonb language sql stable security definer set search_path = public as $
     'counts', jsonb_build_array(
       (select count(*) from players where game_id = g.id and faction = 0),
       (select count(*) from players where game_id = g.id and faction = 1),
-      (select count(*) from players where game_id = g.id and faction = 2)),
-    'players', coalesce((
-      select jsonb_agg(jsonb_build_object('id', p.id, 'nickname', p.nickname, 'faction', p.faction) order by p.joined_at)
-      from players p where p.game_id = g.id), '[]'::jsonb)
+      (select count(*) from players where game_id = g.id and faction = 2))
   )
   from games g where g.id = p_game;
 $$;
@@ -160,7 +188,19 @@ declare v_id uuid;
 begin
   if p_key is null or length(p_key) < 8 then raise exception 'host key too short'; end if;
   insert into games (host_key, max_players) values (p_key, p_max_players) returning id into v_id;
-  return jsonb_build_object('game_id', v_id);
+  return jsonb_build_object('game_id', v_id, 'server_now', now());
+end $$;
+
+-- 大厅每 1s 调用，只返回 joined_at > p_after 的新玩家
+create or replace function list_players(p_game uuid, p_key text, p_after timestamptz default null)
+returns jsonb language plpgsql security definer set search_path = public as $$
+begin
+  perform _check_host(p_game, p_key);
+  return coalesce((
+    select jsonb_agg(jsonb_build_object('id', id, 'nickname', nickname, 'faction', faction, 'joined_at', joined_at)
+                     order by joined_at, id)
+    from players where game_id = p_game and joined_at > coalesce(p_after, '-infinity'::timestamptz)
+  ), '[]'::jsonb);
 end $$;
 
 create or replace function start_round(
@@ -177,31 +217,25 @@ begin
     kind = excluded.kind, options = excluded.options,
     starts_at = excluded.starts_at, ends_at = excluded.ends_at
   returning * into v_round;
-  delete from inputs where round_id = v_round.id;   -- 重开同一轮时清空旧输入
+  delete from inputs where round_id = v_round.id;
   update games set status = 'playing', round_idx = p_idx where id = p_game;
-  return jsonb_build_object('round_id', v_round.id, 'starts_at', v_round.starts_at, 'ends_at', v_round.ends_at);
+  return jsonb_build_object('round_id', v_round.id, 'starts_at', v_round.starts_at, 'ends_at', v_round.ends_at,
+                            'server_now', now());
 end $$;
 
-create or replace function round_inputs(p_round uuid, p_key text)
-returns jsonb language plpgsql security definer set search_path = public as $$
-begin
-  perform _check_host((select game_id from rounds where id = p_round), p_key);
-  return coalesce((
-    select jsonb_agg(jsonb_build_object(
-      'player_id', i.player_id, 'nickname', p.nickname, 'faction', i.faction,
-      'value', i.value, 'first_at', i.first_at))
-    from inputs i join players p on p.id = i.player_id
-    where i.round_id = p_round), '[]'::jsonb);
-end $$;
-
+-- 比赛中每 250ms 调用；收卷后再调一次作为最终数据。每个玩家一行，聚合在前端算
 create or replace function round_live(p_round uuid, p_key text)
 returns jsonb language plpgsql security definer set search_path = public as $$
 begin
   perform _check_host((select game_id from rounds where id = p_round), p_key);
   return coalesce((
-    select jsonb_agg(jsonb_build_object('faction', faction, 'n', n, 'sum', s) order by faction)
-    from (select faction, count(*) as n, sum(value) as s
-          from inputs where round_id = p_round group by faction) t), '[]'::jsonb);
+    select jsonb_agg(jsonb_build_object(
+      'player_id', i.player_id, 'nickname', coalesce(p.nickname, '?'), 'faction', i.faction,
+      'value', i.value, 'first_at', i.first_at))
+    from inputs i
+    join rounds r on r.id = i.round_id
+    left join players p on p.game_id = r.game_id and p.id = i.player_id
+    where i.round_id = p_round), '[]'::jsonb);
 end $$;
 
 create or replace function set_game_state(p_game uuid, p_key text, p_status text, p_state jsonb)
@@ -212,9 +246,13 @@ begin
 end $$;
 
 -- ── 权限：只暴露 RPC ─────────────────────────────────────
-revoke execute on function _random_nick() from public, anon, authenticated;
+revoke execute on function _random_nick(bigint) from public, anon, authenticated;
 revoke execute on function _check_host(uuid, text) from public, anon, authenticated;
-grant execute on function join_game(uuid, uuid), submit_input(uuid, uuid, float8), get_state(uuid),
-  create_game(text, int), start_round(uuid, text, int, text, jsonb, int, int),
-  round_inputs(uuid, text), round_live(uuid, text), set_game_state(uuid, text, text, jsonb)
+grant execute on function
+  join_game(uuid, uuid), submit_input(uuid, uuid, float8), get_state(uuid),
+  create_game(text, int), list_players(uuid, text, timestamptz),
+  start_round(uuid, text, int, text, jsonb, int, int),
+  round_live(uuid, text), set_game_state(uuid, text, text, jsonb)
   to anon;
+
+notify pgrst, 'reload schema';
