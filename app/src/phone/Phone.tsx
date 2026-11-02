@@ -9,9 +9,10 @@ import { usePhoneGame, type PhoneGame } from './usePhoneGame'
 import { usePhase } from './usePhase'
 import Mash from './Mash'
 import Stop from './Stop'
-import { MinorityGame, RpsGame } from './games'
+import { MinorityGame, RpsGame, QuizGame, HoldGame } from './games'
 import ReactGame from './games/ReactGame'
 import type { MinorityExtra, RpsExtra } from '../shared/extras'
+import type { QuizExtra, HoldExtra } from '../shared/scoring.p3'
 
 export default function Phone() {
   const { game, submit, retry } = usePhoneGame()
@@ -133,8 +134,8 @@ function Round({
   const meta = KIND_META[round.kind]
   const result = game.result && game.result.round_idx === round.round_idx ? game.result : null
 
-  // Minority / RPS / Reaction render their own intro, collect and result screens (src/phone/games).
-  if (round.kind === 'minority' || round.kind === 'rps' || round.kind === 'react') {
+  // Minority / RPS / Reaction / Quiz / Hold render their own intro, collect and result screens (src/phone/games).
+  if (round.kind === 'minority' || round.kind === 'rps' || round.kind === 'react' || round.kind === 'quiz' || round.kind === 'hold') {
     const common = {
       phase,
       faction: game.faction as Faction,
@@ -148,6 +149,8 @@ function Round({
     }
     const extra = (result as { extra?: unknown } | null)?.extra ?? null
     if (round.kind === 'react') return <ReactGame {...common} />
+    if (round.kind === 'quiz') return <QuizGame {...common} extra={extra as QuizExtra | null} />
+    if (round.kind === 'hold') return <HoldGame {...common} extra={extra as HoldExtra | null} />
     return round.kind === 'minority' ? (
       <MinorityGame {...common} extra={extra as MinorityExtra | null} />
     ) : (
