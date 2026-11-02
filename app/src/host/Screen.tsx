@@ -112,7 +112,7 @@ export default function Screen() {
             const r = await rpc<{ game_id: string }>('create_game', { p_key: key, p_admin: secret }, { retries: 1 })
             g = r.game_id
           } catch (e) {
-            if (String(e instanceof Error ? e.message : e).includes('hosts only')) { setHostsOnly(true); setPhase('auth'); return }
+            if (String(e instanceof Error ? e.message : e).includes('hosts only')) { try { localStorage.removeItem('pb:admin') } catch { /* ignore */ } setHostsOnly(true); setPhase('auth'); return }
             throw e
           }
         }
@@ -382,7 +382,7 @@ export default function Screen() {
         )}
       </Stage>
       <HostPanel
-        visible={panel} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={snap.schedule.length} players={snap.players.length}
+        visible={panel && snap.phase !== 'auth'} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={snap.schedule.length} players={snap.players.length}
         channel={snap.channel} rpcMs={avgLatency()} bots={snap.bots} lastError={snap.lastError} gameId={snap.gameId}
         canStart={canStart} startLabel={startLabel} onStart={onStart} onSkip={onSkip} onReset={onReset}
         isFullscreen={fs.full} onFullscreen={fs.enter}
