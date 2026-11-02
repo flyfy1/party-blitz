@@ -127,7 +127,7 @@ function MinorityResult(p: MinorityProps & { picked: number | null; style: React
                 <div className="col" style={{ height: `${h}%`, animationDelay: `${i * 0.12}s` }}>
                   {isRare && <div className="crown">👑</div>}
                   <div className="n">{ex.tally[i]}</div>
-                  {p.picked === i && <div className="me" style={{ left: '50%', transform: 'translateX(-50%)' }}>YOU</div>}
+                  {p.picked === i && <div className="me">YOU</div>}
                 </div>
                 <div className="em">{q.emoji[i]}</div>
                 <div className="lb">{c}</div>

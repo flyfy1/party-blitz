@@ -88,11 +88,12 @@ export function RankLine({ faction, result }: { faction: Faction; result: Result
   const f = FACTIONS[faction]
   const r = result.ranks[faction]
   const mv = result.moves[faction]
+  const allTied = result.ranks.every((x) => x === 1)
   return (
     <div className="pg-rank">
-      <div className="pos">{MEDAL[r - 1] ?? '🏁'}</div>
+      <div className="pos">{allTied ? '🤝' : (MEDAL[r - 1] ?? '🏁')}</div>
       <div className="txt">
-        {f.emoji} {f.name} finished #{r}
+        {allTied ? `All three tied · ${f.emoji} ${f.name}` : `${f.emoji} ${f.name} finished #${r}`}
         <br />
         <span style={{ opacity: 0.85, fontSize: 14 }}>now on square {result.positions[faction]}</span>
       </div>

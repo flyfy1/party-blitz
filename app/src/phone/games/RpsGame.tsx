@@ -131,7 +131,7 @@ function RpsResult(p: RpsProps & { vote: number | null; style: React.CSSProperti
   let sub = 'Check the big screen'
   if (hands) {
     const mine = hands[p.faction]
-    const followed = p.vote === null ? '' : p.vote === mine ? ' · your vote won the faction' : ` · you voted ${HAND[p.vote].emoji}, majority said ${HAND[mine].emoji}`
+    const followed = p.vote === null ? ' · you did not vote' : p.vote === mine ? ' · you voted with the majority' : ` · you voted ${HAND[p.vote].emoji}, majority chose ${HAND[mine].emoji}`
     if (allTie) {
       icon = '🤝'
       head = distinct === 1 ? 'EVERYONE THREW THE SAME!' : 'THREE-WAY TIE!'

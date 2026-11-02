@@ -18,8 +18,8 @@
 .pg-clock { position: relative; height: 14px; border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; flex: none; }
 .pg-clock > i { position: absolute; inset: 0; right: auto; width: 100%; border-radius: 999px; background: #fff; transform-origin: left center; transition: background .2s; }
 .pg-clock.urgent > i { background: #FFE14D; animation: pg-blink .25s steps(2) infinite; }
-.pg-clock-num { position: absolute; right: 0; top: -26px; font-weight: 800; font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
-.pg-clockwrap { position: relative; padding-top: 26px; flex: none; }
+.pg-clock-num { text-align: right; font-weight: 800; font-size: 24px; line-height: 1; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+.pg-clockwrap { flex: none; }
 @keyframes pg-blink { to { opacity: .55; } }
 
 /* ── 标题区 ── */
@@ -100,13 +100,13 @@
 .pg-bar .em { font-size: 36px; line-height: 1; }
 .pg-bar .lb { font-size: 13px; font-weight: 800; text-align: center; line-height: 1.1; opacity: .95; }
 .pg-bar .crown { position: absolute; top: -56px; left: 50%; transform: translateX(-50%); font-size: 28px; animation: pg-bounce-in .5s .8s both cubic-bezier(.34,1.56,.64,1); }
-.pg-bar .me { position: absolute; bottom: 100%; margin-bottom: 4px; background: rgba(0,0,0,.35); font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; }
+.pg-bar .me { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.35); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; animation: pg-fade .3s .7s both; }
 .pg-result.gold .pg-bar .col { background: rgba(255,255,255,.55); }
 .pg-result.gold .pg-bar.rare .col { background: #fff; }
 @keyframes pg-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 
 /* 猜拳揭晓：三只手 */
-.pg-hands { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: center; min-height: 170px; }
+.pg-hands { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: start; align-content: center; min-height: 170px; }
 .pg-hand { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: pg-bounce-in .5s cubic-bezier(.34,1.56,.64,1) both; }
 .pg-hand:nth-child(2) { animation-delay: .12s; } .pg-hand:nth-child(3) { animation-delay: .24s; }
 .pg-hand .fist { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; font-size: 54px; background: var(--hc); border: 5px solid #fff; box-shadow: 0 6px 0 rgba(0,0,0,.25); transition: transform .4s cubic-bezier(.34,1.56,.64,1); }

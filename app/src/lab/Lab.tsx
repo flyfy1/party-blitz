@@ -11,7 +11,7 @@ import { pickQuestion } from '../shared/questions'
 import './lab.css'
 
 type Game = 'minority' | 'rps'
-type Scenario = 'random' | 'win' | 'lose' | 'tie'
+type Scenario = 'random' | 'win' | 'mvp' | 'lose' | 'tie'
 const ME = 'me-0000'
 
 function readParams() {
@@ -45,7 +45,7 @@ function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, 
     if (game === 'minority') {
       // 让三个选项人数明显不同；win 时让我的选项最少，lose 时最多
       const weights = [0.5, 0.3, 0.2]
-      if (myValue !== null && scenario === 'win') {
+      if (myValue !== null && (scenario === 'win' || scenario === 'mvp')) {
         weights[myValue] = 0.05
       } else if (myValue !== null && scenario === 'lose') {
         weights[myValue] = 0.7
@@ -61,7 +61,7 @@ function botInputs(game: Game, n: number, faction: Faction, scenario: Scenario, 
       // rps：每个阵营有一个主流出拳
       let pref: Triple = [0, 1, 2]
       if (scenario === 'tie') pref = [0, 0, 0]
-      if (scenario === 'win') {
+      if (scenario === 'win' || scenario === 'mvp') {
         const my = myValue ?? 0
         pref = [0, 0, 0]
         pref[faction] = my
@@ -131,7 +131,7 @@ export default function Lab() {
         // 和大屏一样：收卷后 1.2s 才有结果；这里在 collect 阶段就先算好，result 阶段显示
         const inputs = botInputs(params.game, params.bots, params.faction, params.scenario, round.startsAt, myValue.current)
         if (myValue.current !== null)
-          inputs.push({ player_id: ME, nickname: 'You', faction: params.faction, value: myValue.current, first_at: new Date(round.startsAt + 100).toISOString() })
+          inputs.push({ player_id: ME, nickname: 'You', faction: params.faction, value: myValue.current, first_at: new Date(round.startsAt + (params.scenario === 'mvp' ? 100 : 9000)).toISOString() })
         const counts: Triple = [0, 0, 0]
         for (let i = 0; i < params.bots; i++) counts[i % 3]++
         counts[params.faction]++
@@ -199,6 +199,7 @@ export default function Lab() {
         <select value={params.scenario} onChange={(e) => set('scenario', e.target.value as Scenario)}>
           <option value="random">🎲 random</option>
           <option value="win">😎 I win</option>
+          <option value="mvp">🏆 I win + MVP</option>
           <option value="lose">😵 I lose</option>
           {params.game === 'rps' && <option value="tie">🤝 tie</option>}
         </select>
