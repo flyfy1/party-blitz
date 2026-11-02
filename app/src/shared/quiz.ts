@@ -43,7 +43,7 @@ export function parseQuizOptions(o: unknown): QuizQuestion {
   if (o && typeof o === 'object') {
     const v = o as Partial<QuizQuestion>
     if (typeof v.q === 'string' && Array.isArray(v.choices) && v.choices.length === 3 && typeof v.answer === 'number' && v.answer >= 0 && v.answer <= 2) {
-      return { qi: v.qi, q: v.q, choices: v.choices as [string, string, string], answer: v.answer as 0 | 1 | 2 }
+      return { qi: v.qi, q: v.q, choices: v.choices as [string, string, string], answer: v.answer as 0 | 1 | 2, ...(v.supabase ? { supabase: true } : {}) }
     }
     if (typeof v.qi === 'number' && QUIZ[v.qi]) return QUIZ[v.qi]
   }
