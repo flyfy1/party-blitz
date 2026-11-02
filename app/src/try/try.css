@@ -1,0 +1,24 @@
+/* Practice page: game picker + one phone-sized round. Full screen on a phone, framed on desktop. */
+.try-menu { min-height: 100%; padding: 20px 16px 40px; background: #1B1033; color: #fff; max-width: 760px; margin: 0 auto; }
+.try-back { display: inline-block; color: #B9AED6; font-weight: 700; text-decoration: none; margin-bottom: 12px; }
+.try-menu h1 { font-size: 36px; font-weight: 800; margin: 0 0 6px; }
+.try-menu p { color: #B9AED6; font-size: 16px; margin: 0 0 18px; }
+.try-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.try-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 16px; text-align: left; border-radius: 18px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; font: inherit; cursor: pointer; }
+.try-card:active, .try-card:hover { background: rgba(255,255,255,.12); }
+.try-card .ic { font-size: 40px; line-height: 1; }
+.try-card .tt { font-size: 22px; font-weight: 800; }
+.try-card .hn { font-size: 14px; color: #B9AED6; }
+
+.try-wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: #0f0820; }
+.try-phone { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--fc); color: #fff; }
+.try-head { flex: none; display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-weight: 800; font-size: 16px; background: rgba(0,0,0,.35); }
+.try-x { flex: none; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(255,255,255,.18); color: #fff; font-size: 18px; font-weight: 800; cursor: pointer; }
+.try-body { flex: 1; min-height: 0; position: relative; }
+.try-body > .ph { position: absolute; inset: 0; height: auto; }
+.try-foot { flex: none; display: flex; gap: 10px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: rgba(0,0,0,.35); }
+.try-btn { flex: 1; padding: 14px 10px; border-radius: 14px; border: none; font: inherit; font-size: 18px; font-weight: 800; background: rgba(255,255,255,.18); color: #fff; cursor: pointer; }
+.try-btn.primary { background: #FFE14D; color: #222; }
+@media (min-width: 700px) {
+  .try-phone { width: 390px; height: min(844px, 94vh); border-radius: 36px; border: 8px solid #2b2244; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
+}

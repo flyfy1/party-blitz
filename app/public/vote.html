@@ -136,6 +136,15 @@
   .shots-phone .shot img { aspect-ratio: 390 / 844; object-fit: cover; }
   .shots-note { flex: 1 1 260px; display: flex; align-items: center; color: var(--muted); font-size: 15px; line-height: 1.6; }
 
+  /* try every game */
+  .try-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin-top: 24px; }
+  .try-card { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: var(--radius); background: var(--card); border: 1px solid var(--card-border); text-decoration: none; transition: transform .15s, background .15s; }
+  .try-card:hover { transform: translateY(-3px); background: rgba(255,255,255,.1); }
+  .try-card .ic { font-size: 34px; line-height: 1; }
+  .try-card b { font: 800 19px 'Baloo 2', sans-serif; }
+  .try-card span { color: var(--muted); font-size: 13px; line-height: 1.35; }
+  .try-card.all { justify-content: center; align-items: center; text-align: center; background: rgba(255,210,63,.12); border-color: rgba(255,210,63,.4); }
+
   /* self-running demo embed */
   .demo-embed { margin-top: 28px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 10px; }
   .demo-embed .frame { position: relative; width: 100%; aspect-ratio: 16 / 9; border-radius: calc(var(--radius) - 6px); overflow: hidden; background: #1B1033; }
@@ -224,6 +233,25 @@
         <span>Simulated locally in your browser · no Supabase calls from this preview.</span>
         <a href="demo.html" target="_blank" rel="noopener">Open full screen ↗</a>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TRY ============ -->
+<section id="try">
+  <div class="wrap reveal">
+    <div class="eyebrow">Try every game</div>
+    <h2>Seven mini-games. Play any of them right now.</h2>
+    <p class="lead">Practice mode runs the real phone screens against 30 robot players, right in your browser. No room, no QR code, nothing sent anywhere.</p>
+    <div class="try-grid">
+      <a class="try-card" href="try.html?game=mash" target="_blank" rel="noopener"><div class="ic">⚡</div><b>Tap Frenzy</b><span>Tap as fast as you can</span></a>
+      <a class="try-card" href="try.html?game=stop" target="_blank" rel="noopener"><div class="ic">🎯</div><b>Perfect Stop</b><span>Stop the bar dead centre</span></a>
+      <a class="try-card" href="try.html?game=quiz" target="_blank" rel="noopener"><div class="ic">🧠</div><b>Pop Quiz</b><span>One tap, the right answer</span></a>
+      <a class="try-card" href="try.html?game=react" target="_blank" rel="noopener"><div class="ic">🟢</div><b>Reaction</b><span>Wait for green, then tap</span></a>
+      <a class="try-card" href="try.html?game=minority" target="_blank" rel="noopener"><div class="ic">🤔</div><b>Minority Wins</b><span>Pick what fewest people pick</span></a>
+      <a class="try-card" href="try.html?game=rps" target="_blank" rel="noopener"><div class="ic">✊</div><b>Faction RPS</b><span>Vote your faction’s hand</span></a>
+      <a class="try-card" href="try.html?game=hold" target="_blank" rel="noopener"><div class="ic">⏱️</div><b>Hold Five</b><span>Release at exactly 5.00 s</span></a>
+      <a class="try-card all" href="try.html" target="_blank" rel="noopener"><b>All games →</b><span>Open practice mode</span></a>
     </div>
   </div>
 </section>

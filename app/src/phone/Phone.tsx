@@ -27,6 +27,9 @@ export default function Phone() {
           <div className="ph-logo">⚡</div>
           <h1 className="ph-title cn">PARTY BLITZ</h1>
           <p className="ph-sub">Scan the QR code on the big screen to join</p>
+          <a className="ph-sub" href="/try.html" style={{ marginTop: 24, textDecoration: 'underline' }}>
+            No game here? Practice the mini-games →
+          </a>
         </div>
       </Shell>
     )
