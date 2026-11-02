@@ -7,14 +7,16 @@ const NON_MASH = ['stop', 'quiz', 'react', 'minority', 'hold', 'rps']
 
 export interface Preset { id: string; label: string; build: () => string[] }
 
-// Every preset uses each kind at most once; mash is always the last (doubled) round.
+// Every preset has exactly two quiz rounds (both Supabase questions, never back to back);
+// every other kind appears at most once; mash is always the last (doubled) round.
 export const PRESETS: Preset[] = [
-  { id: 'all', label: 'All games (7)', build: () => ['stop', 'quiz', 'react', 'minority', 'hold', 'rps', 'mash'] },
-  { id: 'classic', label: 'Classic 5', build: () => ['stop', 'minority', 'rps', 'quiz', 'mash'] },
-  { id: 'random', label: 'Random 6', build: () => {
-    const pool = NON_MASH.filter((k) => SUPPORTED_KINDS.includes(k))
+  { id: 'all', label: 'All games (8)', build: () => ['stop', 'quiz', 'react', 'minority', 'quiz', 'hold', 'rps', 'mash'] },
+  { id: 'classic', label: 'Classic 6', build: () => ['stop', 'quiz', 'minority', 'rps', 'quiz', 'mash'] },
+  { id: 'random', label: 'Random 7', build: () => {
+    const pool = NON_MASH.filter((k) => k !== 'quiz' && SUPPORTED_KINDS.includes(k))
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]] }
-    return [...pool.slice(0, 5), 'mash']
+    const [a, b, c, d] = pool
+    return [a, 'quiz', b, c, 'quiz', d, 'mash']
   } },
 ]
 

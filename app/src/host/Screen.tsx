@@ -12,7 +12,7 @@ import { RpsStage } from './views/RpsStage'
 import { ReactStage } from './views/ReactStage'
 import { QuizStage } from './views/QuizStage'
 import { HoldStage } from './views/HoldStage'
-import { pickQuiz, parseQuizOptions } from '../shared/quiz'
+import { pickSupabaseQuiz, parseQuizOptions } from '../shared/quiz'
 import { quizExtra, holdExtra } from '../shared/scoring.p3'
 import { makeReactOptions } from '../shared/react'
 import { sfx, unlockSfx } from './sfx'
@@ -210,7 +210,7 @@ export default function Screen() {
       const playMs = kind === 'hold' ? Math.max(T.play, 7000) : T.play
       const isFinal = idx === S.schedule.length - 1
       const options: unknown = kind === 'minority' ? pickQuestion()
-        : kind === 'quiz' ? pickQuiz()
+        : kind === 'quiz' ? pickSupabaseQuiz(S.schedule.slice(0, idx).filter((k) => k === 'quiz').length, S.gameId)
         : kind === 'react' ? (() => { const o = makeReactOptions(now() + T.intro); const after = Math.min(o.go_after_ms ?? 4000, Math.max(1000, playMs - 2500)); return { go_after_ms: after, go_at: new Date(now() + T.intro + after).toISOString() } })()
         : null
       const r = await rpc<{ round_id: string; starts_at: string; ends_at: string }>('start_round', {
