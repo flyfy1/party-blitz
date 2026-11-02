@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Party Blitz</title>
+<meta name="description" content="Party Blitz: 120 phones, one big screen, zero game servers. A three-faction party game built live on Supabase with Claude Code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+<style>
+  :root {
+    --bg: #1B1033;
+    --bg-2: #241546;
+    --card: rgba(255,255,255,0.06);
+    --card-border: rgba(255,255,255,0.12);
+    --text: #F7F3FF;
+    --muted: #B9AED6;
+    --lava: #FF4D3D;
+    --ocean: #2F7BFF;
+    --forest: #22C55E;
+    --gold: #FFD23F;
+    --radius: 22px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: Inter, system-ui, -apple-system, sans-serif; line-height: 1.55;
+    overflow-x: hidden;
+  }
+  h1, h2, h3, .display { font-family: 'Baloo 2', Inter, sans-serif; letter-spacing: -0.01em; }
+  a { color: inherit; }
+  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+  section { padding: 72px 0; position: relative; }
+  .eyebrow { font-weight: 700; color: var(--gold); text-transform: uppercase; letter-spacing: .14em; font-size: 13px; }
+  h2 { font-size: clamp(30px, 4.5vw, 48px); margin: 8px 0 12px; line-height: 1.1; }
+  .lead { color: var(--muted); font-size: clamp(16px, 1.6vw, 19px); max-width: 60ch; }
+
+  /* background blobs */
+  .blobs { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .blob { position: absolute; width: 60vmax; height: 60vmax; border-radius: 50%; filter: blur(90px); opacity: .32; }
+  .blob.a { background: var(--lava); top: -25vmax; left: -20vmax; }
+  .blob.b { background: var(--ocean); bottom: -30vmax; right: -15vmax; }
+  .blob.c { background: var(--forest); top: 35vh; left: 45vw; width: 40vmax; height: 40vmax; opacity: .22; }
+
+  /* hero */
+  .hero { min-height: 100svh; display: grid; align-items: center; padding: 48px 0 40px; }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
+  .title { font-size: clamp(56px, 10vw, 128px); line-height: .9; margin: 10px 0; font-weight: 800;
+    background: linear-gradient(90deg, var(--lava), var(--gold) 45%, var(--forest) 75%, var(--ocean));
+    -webkit-background-clip: text; background-clip: text; color: transparent; }
+  /* letters are split into inline-block spans for the GSAP drop-in; background-clip:text on the parent
+     does not paint into transformed children, so each span carries its own slice of the gradient (see paintTitle) */
+  .title .word { display: inline-block; white-space: nowrap; }
+  .title .ch { display: inline-block; -webkit-background-clip: text; background-clip: text; color: transparent;
+    background-image: linear-gradient(90deg, var(--lava), var(--gold) 45%, var(--forest) 75%, var(--ocean)); }
+  .tagline { font-size: clamp(20px, 2.6vw, 30px); font-weight: 700; margin: 8px 0 16px; line-height: 1.2; }
+  .cta-row { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 24px; }
+  .btn { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 18px; padding: 16px 26px; border-radius: 999px;
+    border: 0; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 10px;
+    transition: transform .15s, box-shadow .15s; }
+  .btn:active { transform: scale(.96); }
+  .btn-primary { background: var(--gold); color: #2A1B00; box-shadow: 0 10px 30px rgba(255,210,63,.35); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 40px rgba(255,210,63,.45); }
+  .btn-ghost { background: var(--card); color: var(--text); border: 1px solid var(--card-border); }
+  .btn-ghost:hover { background: rgba(255,255,255,.1); }
+
+  .mascots { display: flex; justify-content: center; gap: 4vw; font-size: clamp(64px, 9vw, 132px); line-height: 1; }
+  .mascot { filter: drop-shadow(0 18px 30px rgba(0,0,0,.45)); position: relative; }
+  .mascot small { position: absolute; left: 50%; bottom: -34px; transform: translateX(-50%);
+    font: 700 14px 'Baloo 2', sans-serif; padding: 4px 12px; border-radius: 999px; color: #fff; white-space: nowrap; }
+
+  /* stats */
+  .stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-top: 56px; }
+  .stat { background: var(--card); border: 1px solid var(--card-border); border-radius: 18px; padding: 18px 16px; text-align: center; }
+  .stat b { display: block; font: 800 clamp(30px, 4vw, 44px)/1 'Baloo 2', sans-serif; color: var(--gold); }
+  .stat span { color: var(--muted); font-size: 13px; font-weight: 600; }
+
+  /* demo */
+  .demo { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02)); border: 1px solid var(--card-border);
+    border-radius: var(--radius); padding: 28px; }
+  .demo-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .demo-head h3 { margin: 0; font-size: 26px; }
+  .timer { font: 800 44px/1 'Baloo 2', sans-serif; color: var(--gold); min-width: 2ch; text-align: right; }
+  .lanes { margin: 22px 0 18px; display: grid; gap: 12px; }
+  .lane { position: relative; height: 56px; border-radius: 14px; background: rgba(0,0,0,.28); overflow: hidden; }
+  .lane .fill { position: absolute; inset: 0 auto 0 0; width: 0; opacity: .35; border-radius: 14px; transition: width .12s linear; }
+  .lane .runner { position: absolute; top: 50%; left: 0; transform: translate(0, -50%); font-size: 36px; transition: left .12s linear; }
+  .lane .label { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font: 700 15px 'Baloo 2', sans-serif; color: var(--muted); }
+  .lane .label b { color: var(--text); font-size: 18px; }
+  .mash-btn { width: 100%; height: 120px; border-radius: 24px; border: 0; cursor: pointer; color: #fff; font: 800 40px 'Baloo 2', sans-serif;
+    background: radial-gradient(circle at 30% 30%, #FF8A5B, var(--lava) 60%, #B3261E); box-shadow: 0 14px 0 #7A160F, 0 24px 40px rgba(255,77,61,.35);
+    touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .05s; }
+  .mash-btn:active, .mash-btn.down { transform: translateY(8px); box-shadow: 0 6px 0 #7A160F, 0 12px 20px rgba(255,77,61,.3); }
+  .mash-btn[disabled] { opacity: .5; cursor: default; }
+  .demo-msg { text-align: center; margin: 14px 0 0; font: 700 20px 'Baloo 2', sans-serif; min-height: 28px; }
+
+  /* timeline */
+  .round { display: grid; grid-template-columns: 2fr 10fr 1.2fr 1.8fr; gap: 6px; margin-top: 28px; }
+  .phase { border-radius: 14px; padding: 16px 12px; text-align: center; font: 700 14px 'Baloo 2', sans-serif; border: 1px solid var(--card-border); background: var(--card); position: relative; overflow: hidden; }
+  .phase b { display: block; font-size: 22px; color: var(--gold); }
+  .phase::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: rgba(255,255,255,.08); }
+
+  /* grid cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-top: 28px; }
+  .card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 24px; transition: transform .2s, border-color .2s; }
+  .card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,.3); }
+  .card .ico { font-size: 40px; line-height: 1; margin-bottom: 10px; }
+  .card h3 { margin: 0 0 8px; font-size: 22px; }
+  .card p { margin: 0; color: var(--muted); font-size: 15px; }
+  .card.why { border-left: 5px solid var(--gold); }
+  .card.why h3 { color: var(--gold); }
+  .card.why p b { color: var(--text); }
+
+  /* architecture */
+  .arch { margin-top: 28px; background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); padding: 20px; overflow-x: auto; }
+  .arch svg { width: 100%; height: auto; min-width: 640px; display: block; }
+  .arch text { font-family: Inter, sans-serif; fill: var(--text); font-size: 14px; }
+  .arch .t { font-family: 'Baloo 2', sans-serif; font-weight: 800; font-size: 18px; }
+  .arch .m { fill: var(--muted); font-size: 12px; }
+  .arch .box { fill: rgba(255,255,255,.06); stroke: rgba(255,255,255,.25); stroke-width: 1.5; }
+  .arch .flow { stroke-width: 3; fill: none; stroke-linecap: round; stroke-dasharray: 10 8; animation: dash 1.2s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -18; } }
+
+  .reveal { opacity: 0; transform: translateY(28px); }
+
+  footer { padding: 48px 0 64px; color: var(--muted); font-size: 14px; }
+  footer .links { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-bottom: 14px; }
+  footer a { font-weight: 600; color: var(--text); }
+
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .stat:last-child { grid-column: span 2; }
+    .round { grid-template-columns: 1fr 1fr; }
+    section { padding: 56px 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .arch .flow { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="blobs"><div class="blob a"></div><div class="blob b"></div><div class="blob c"></div></div>
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <div class="wrap">
+    <div class="hero-grid">
+      <div>
+        <div class="eyebrow">Claude SG × Supabase Hackathon · Singapore</div>
+        <h1 class="title" id="title">PARTY BLITZ</h1>
+        <p class="tagline">120 phones. One big screen. Zero game servers.</p>
+        <p class="lead">Scan a QR code, get thrown into one of three factions, and play 15-second mini-games against the whole room. Every tap goes through Supabase. The browser on stage is the referee.</p>
+        <div class="cta-row">
+          <button class="btn btn-primary" id="voteBtn">🗳️ Vote for Party Blitz</button>
+          <a class="btn btn-ghost" id="playLink" href="#" target="_blank" rel="noopener">📱 Play it now</a>
+          <a class="btn btn-ghost" href="#why">Why vote? ↓</a>
+        </div>
+      </div>
+      <div class="mascots" aria-hidden="true">
+        <div class="mascot" data-bob>🐲<small style="background:var(--lava)">Lava</small></div>
+        <div class="mascot" data-bob>🐙<small style="background:var(--ocean)">Ocean</small></div>
+        <div class="mascot" data-bob>🦊<small style="background:var(--forest)">Forest</small></div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b data-count="120">0</b><span>players, live</span></div>
+      <div class="stat"><b data-count="15" data-suffix="s">0</b><span>per round</span></div>
+      <div class="stat"><b data-count="2">0</b><span>broadcasts per round</span></div>
+      <div class="stat"><b data-count="0">0</b><span>game servers</span></div>
+      <div class="stat"><b data-count="1" data-suffix="h">0</b><span>build time, with Claude Code</span></div>
+    </div>
+  </div>
+</header>
+
+<!-- ============ LIVE DEMO ============ -->
+<section>
+  <div class="wrap reveal">
+    <div class="eyebrow">Try round one right here</div>
+    <h2>MASH! Beat two bots in 10 seconds.</h2>
+    <p class="lead">This is the exact first mini-game. In the room, your taps race your whole faction's average against the other two factions on the big screen.</p>
+    <div class="demo" id="demo">
+      <div class="demo-head">
+        <h3>⚡ Mash Sprint</h3>
+        <div class="timer" id="timer">10</div>
+      </div>
+      <div class="lanes">
+        <div class="lane" data-lane="0"><div class="fill" style="background:var(--lava)"></div><div class="runner">🐲</div><div class="label">You · <b>0</b></div></div>
+        <div class="lane" data-lane="1"><div class="fill" style="background:var(--ocean)"></div><div class="runner">🐙</div><div class="label">Ocean bot · <b>0</b></div></div>
+        <div class="lane" data-lane="2"><div class="fill" style="background:var(--forest)"></div><div class="runner">🦊</div><div class="label">Forest bot · <b>0</b></div></div>
+      </div>
+      <button class="mash-btn" id="mashBtn">TAP TO START</button>
+      <p class="demo-msg" id="demoMsg">Two thumbs allowed. Cheating is capped server-side in the real game.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW A ROUND WORKS ============ -->
+<section>
+  <div class="wrap reveal">
+    <div class="eyebrow">Fast enough that nobody gets bored</div>
+    <h2>Every round is exactly 15 seconds.</h2>
+    <p class="lead">The big screen broadcasts <b>once</b> at the start of a round and <b>once</b> with the result. Phones count down from server timestamps, so a slow Wi-Fi hop never shifts the finish line.</p>
+    <div class="round" id="roundBar">
+      <div class="phase"><b>2s</b>INTRO<br><span style="color:var(--muted)">"MASH!"</span></div>
+      <div class="phase"><b>10s</b>PLAY<br><span style="color:var(--muted)">inputs via RPC</span></div>
+      <div class="phase"><b>1.2s</b>COLLECT<br><span style="color:var(--muted)">grace window</span></div>
+      <div class="phase"><b>1.8s</b>RESULT<br><span style="color:var(--muted)">pieces move</span></div>
+    </div>
+    <div class="grid">
+      <div class="card"><div class="ico">⚡</div><h3>Mash Sprint</h3><p>Tap as fast as you can. Faction score is taps per member, so a small faction can still win.</p></div>
+      <div class="card"><div class="ico">🎯</div><h3>Precision Stop</h3><p>A needle swings faster and faster. Stop it dead centre. Judged on your phone, so latency can't cheat you.</p></div>
+      <div class="card"><div class="ico">🤔</div><h3>Minority Rules</h3><p>Three answers. Pick the one the <i>fewest</i> people in the room pick. Pure psychology.</p></div>
+      <div class="card"><div class="ico">✊</div><h3>Faction RPS</h3><p>Vote your faction's throw. Rock, paper, scissors between three giant fists on screen.</p></div>
+    </div>
+    <p class="lead" style="margin-top:22px">Each result moves your faction's piece along a 20-square party board with stars, rockets and traps. Furthest piece wins. That's the whole rulebook.</p>
+  </div>
+</section>
+
+<!-- ============ ARCHITECTURE ============ -->
+<section>
+  <div class="wrap reveal">
+    <div class="eyebrow">Supabase is doing the real work</div>
+    <h2>No game server. Postgres is the referee's clerk.</h2>
+    <p class="lead">Phones never talk to each other and never publish. They call RPCs over HTTP and listen to one Broadcast channel. The big screen reads aggregates every 250 ms, scores each round with pure functions, and writes the board back.</p>
+    <div class="arch">
+      <svg viewBox="0 0 960 360" role="img" aria-label="Architecture: phones call Supabase RPC; the big screen reads aggregates and broadcasts via Realtime">
+        <!-- phones -->
+        <rect class="box" x="20" y="40" width="250" height="280" rx="18"/>
+        <text class="t" x="40" y="74">📱 120 phones</text>
+        <text class="m" x="40" y="100">one localStorage uuid each, no Auth</text>
+        <text x="40" y="140">join_game()</text>
+        <text x="40" y="168">submit_input()  ≈ 1 req/s</text>
+        <text x="40" y="196">get_state()  fallback poll</text>
+        <text x="40" y="236">subscribe game:{id}</text>
+        <text class="m" x="40" y="258">receive only, never send</text>
+        <text class="m" x="40" y="300">spectators beyond 120: poll only</text>
+        <!-- supabase -->
+        <rect class="box" x="355" y="40" width="250" height="280" rx="18"/>
+        <text class="t" x="375" y="74">⚡ Supabase</text>
+        <text class="m" x="375" y="100">Singapore region, Free tier</text>
+        <text x="375" y="140">Postgres · 4 tables, RLS on</text>
+        <text x="375" y="168">security definer RPCs only</text>
+        <text x="375" y="196">advisory lock for the 120 cap</text>
+        <text x="375" y="224">server-side names & anti-cheat</text>
+        <text x="375" y="264">Realtime Broadcast</text>
+        <text class="m" x="375" y="286">2 messages per round, 60-s avg limit</text>
+        <!-- screen -->
+        <rect class="box" x="690" y="40" width="250" height="280" rx="18"/>
+        <text class="t" x="710" y="74">🖥️ Big screen = host</text>
+        <text class="m" x="710" y="100">the only referee, with host_key</text>
+        <text x="710" y="140">start_round()</text>
+        <text x="710" y="168">round_live() every 250 ms</text>
+        <text x="710" y="196">scoring.ts (unit-tested)</text>
+        <text x="710" y="224">set_game_state()</text>
+        <text x="710" y="264">broadcast round / result</text>
+        <text class="m" x="710" y="286">?bots=N for solo testing</text>
+        <!-- flows -->
+        <path class="flow" d="M270 160 C 310 160, 315 160, 355 160" stroke="#FF4D3D"/>
+        <text class="m" x="283" y="150">RPC</text>
+        <path class="flow" d="M605 180 C 645 180, 650 180, 690 180" stroke="#22C55E"/>
+        <text class="m" x="618" y="170">RPC</text>
+        <path class="flow" d="M690 270 C 600 270, 500 300, 270 240" stroke="#2F7BFF"/>
+        <text class="m" x="440" y="330">Broadcast · once per phase</text>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- ============ WHY VOTE ============ -->
+<section id="why">
+  <div class="wrap reveal">
+    <div class="eyebrow">The case for your vote</div>
+    <h2>Six reasons Party Blitz should win.</h2>
+    <div class="grid">
+      <div class="card why"><div class="ico">🎪</div><h3>The demo is the room</h3><p>Most hackathon demos are a screen recording. Ours needs <b>you</b>. Everyone with a phone is in the game within seconds, no app, no login, no name to type. If the room is loud, it worked.</p></div>
+      <div class="card why"><div class="ico">🧱</div><h3>Supabase is load-bearing</h3><p>Postgres RPCs take every input, an advisory lock enforces the player cap, RLS hides the tables, Realtime Broadcast syncs 120 phones. Remove Supabase and there is no game, not a nicer game.</p></div>
+      <div class="card why"><div class="ico">📏</div><h3>Designed against real limits</h3><p>We read the Realtime rate limiter <b>source</b> to learn the per-second limit is a 60-second rolling average and that fan-out counts per subscriber. The design uses 1/6 of the Free-tier budget and never touches Presence or Postgres Changes.</p></div>
+      <div class="card why"><div class="ico">⚖️</div><h3>Fair by construction</h3><p>Factions are balanced atomically with a sequence. Scores are per member, so idle phones hurt, not help. Names are generated server-side. Tap counts are capped by elapsed time. Precision is judged locally so Wi-Fi can't decide a round.</p></div>
+      <div class="card why"><div class="ico">🛟</div><h3>Built to survive a venue</h3><p>Server-time countdowns, a polling fallback for lost broadcasts, channel rebuild on screen unlock, host recovery from the database after a refresh, and a bot mode that runs the whole show if the Wi-Fi dies.</p></div>
+      <div class="card why"><div class="ico">🤖</div><h3>Claude Code, honestly</h3><p>One design doc written before the event. One prompt. Scoring is pure, unit-tested TypeScript. The README lists every decision, every rejected alternative, and every assumption we could not verify.</p></div>
+    </div>
+    <div class="cta-row" style="justify-content:center; margin-top:36px">
+      <button class="btn btn-primary" id="voteBtn2">🗳️ Yes, this one gets my vote</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="links">
+      <a id="playLink2" href="#" target="_blank" rel="noopener">Play</a>
+      <a id="screenLink" href="#" target="_blank" rel="noopener">Big screen</a>
+      <a id="repoLink" href="#" target="_blank" rel="noopener">Source & design docs</a>
+    </div>
+    <div>Party Blitz · Built at Claude SG × Supabase "Build with Claude and Supabase", 2 Nov 2026 · Vite + React + GSAP + Supabase</div>
+  </div>
+</footer>
+
+<script>
+  // ---- Edit these three before submitting ----
+  const PLAY_URL   = location.origin + '/';
+  const SCREEN_URL = location.origin + '/?screen=1';
+  const REPO_URL   = 'https://github.com/flyfy1/party-blitz';
+
+  for (const id of ['playLink', 'playLink2']) document.getElementById(id).href = PLAY_URL;
+  document.getElementById('screenLink').href = SCREEN_URL;
+  document.getElementById('repoLink').href = REPO_URL;
+
+  // ---- hero animations ----
+  const titleEl = document.getElementById('title');
+  // letters inside per-word wrappers, so lines only break between words
+  titleEl.innerHTML = titleEl.textContent.trim().split(' ')
+    .map(w => `<span class="word">${w.split('').map(c => `<span class="ch">${c}</span>`).join('')}</span>`)
+    .join(' ');
+  function paintTitle() {
+    const spans = [...titleEl.querySelectorAll('.ch')];
+    const left = Math.min(...spans.map(s => s.offsetLeft));
+    const width = Math.max(...spans.map(s => s.offsetLeft + s.offsetWidth)) - left;
+    spans.forEach(s => {
+      s.style.backgroundSize = width + 'px 100%';
+      s.style.backgroundPosition = (left - s.offsetLeft) + 'px 0';
+    });
+  }
+  paintTitle();
+  document.fonts.ready.then(paintTitle);
+  window.addEventListener('resize', paintTitle);
+  gsap.from('#title .ch', { y: 80, opacity: 0, rotate: () => gsap.utils.random(-20, 20), stagger: 0.05, duration: 0.9, ease: 'back.out(1.8)' });
+  gsap.from('.tagline, .lead, .cta-row', { y: 24, opacity: 0, stagger: 0.12, duration: 0.7, delay: 0.5, ease: 'power3.out' });
+  gsap.from('.mascot', { scale: 0, opacity: 0, stagger: 0.15, duration: 0.8, delay: 0.4, ease: 'back.out(2)' });
+  document.querySelectorAll('[data-bob]').forEach((el, i) => {
+    gsap.to(el, { y: -18, duration: 1.6 + i * 0.3, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: i * 0.2 });
+  });
+  gsap.to('.blob.a', { x: 120, y: 80, duration: 14, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+  gsap.to('.blob.b', { x: -140, y: -60, duration: 17, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+  gsap.to('.blob.c', { x: 90, y: -120, duration: 20, yoyo: true, repeat: -1, ease: 'sine.inOut' });
+
+  // ---- rolling counters ----
+  function rollCounters() {
+    document.querySelectorAll('[data-count]').forEach(el => {
+      const target = +el.dataset.count, suffix = el.dataset.suffix || '';
+      const o = { v: 0 };
+      gsap.to(o, { v: target, duration: 1.4, ease: 'power3.out', delay: 0.8,
+        onUpdate: () => { el.textContent = Math.round(o.v) + suffix; } });
+    });
+  }
+  rollCounters();
+
+  // ---- scroll reveal ----
+  const io = new IntersectionObserver(entries => {
+    for (const e of entries) if (e.isIntersecting) {
+      gsap.to(e.target, { opacity: 1, y: 0, duration: 0.8, ease: 'power3.out' });
+      e.target.querySelectorAll('.card').forEach((c, i) => gsap.from(c, { y: 30, opacity: 0, duration: .6, delay: i * .07, ease: 'back.out(1.5)' }));
+      io.unobserve(e.target);
+    }
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+  // round bar sweep
+  const roundBar = document.getElementById('roundBar');
+  new IntersectionObserver((entries, obs) => {
+    if (!entries[0].isIntersecting) return;
+    obs.disconnect();
+    const phases = [...roundBar.querySelectorAll('.phase')];
+    const durs = [2, 10, 1.2, 1.8];
+    const tl = gsap.timeline({ repeat: -1, repeatDelay: 1 });
+    phases.forEach((p, i) => {
+      tl.fromTo(p, { boxShadow: '0 0 0 0 rgba(255,210,63,0)' }, { boxShadow: '0 0 0 3px rgba(255,210,63,.9)', duration: .15 }, '>')
+        .to(p, { boxShadow: '0 0 0 0 rgba(255,210,63,0)', duration: durs[i] / 3 }, '>');
+    });
+  }, { threshold: 0.4 }).observe(roundBar);
+
+  // ---- confetti on vote ----
+  function party(big) {
+    const colors = ['#FF4D3D', '#2F7BFF', '#22C55E', '#FFD23F', '#FFFFFF'];
+    confetti({ particleCount: big ? 220 : 120, spread: big ? 110 : 80, origin: { y: 0.6 }, colors });
+    if (big) setTimeout(() => confetti({ particleCount: 120, angle: 60, spread: 70, origin: { x: 0 }, colors }), 200),
+             setTimeout(() => confetti({ particleCount: 120, angle: 120, spread: 70, origin: { x: 1 }, colors }), 400);
+  }
+  for (const id of ['voteBtn', 'voteBtn2']) {
+    const b = document.getElementById(id);
+    b.addEventListener('click', () => {
+      party(true);
+      gsap.fromTo(b, { scale: 1 }, { scale: 1.08, duration: .12, yoyo: true, repeat: 1 });
+      b.textContent = '🎉 Thank you! See you on the big screen';
+    });
+  }
+
+  // ---- mash demo ----
+  const btn = document.getElementById('mashBtn');
+  const timerEl = document.getElementById('timer');
+  const msg = document.getElementById('demoMsg');
+  const lanes = [...document.querySelectorAll('.lane')].map(l => ({
+    el: l, fill: l.querySelector('.fill'), runner: l.querySelector('.runner'), label: l.querySelector('.label b')
+  }));
+  const PLAY_MS = 10000;
+  let running = false, counts = [0, 0, 0], leader = -1, startAt = 0, raf = 0, botTimers = [];
+
+  function render() {
+    const max = Math.max(1, ...counts);
+    // keep runners clear of the score label on the right
+    const w = lanes[0].el.clientWidth - Math.max(...lanes.map(l => l.label.parentElement.offsetWidth)) - 70;
+    lanes.forEach((l, i) => {
+      const f = counts[i] / max;
+      l.fill.style.width = (f * 100) + '%';
+      l.runner.style.left = (f * w) + 'px';
+      l.label.textContent = counts[i];
+      l.runner.style.fontSize = (i === leader ? 44 : 36) + 'px';
+    });
+    const newLeader = counts.indexOf(Math.max(...counts));
+    if (newLeader !== leader && counts[newLeader] > 0) {
+      if (leader !== -1) {
+        gsap.fromTo('#demo', { x: -6 }, { x: 6, duration: .05, repeat: 5, yoyo: true, clearProps: 'x' });
+        msg.textContent = newLeader === 0 ? '🔥 OVERTAKE! You lead!' : (newLeader === 1 ? '🐙 Ocean takes the lead!' : '🦊 Forest takes the lead!');
+      }
+      leader = newLeader;
+    }
+  }
+
+  function tick() {
+    const left = Math.max(0, PLAY_MS - (performance.now() - startAt));
+    timerEl.textContent = Math.ceil(left / 1000);
+    render();
+    if (left > 0) raf = requestAnimationFrame(tick); else finish();
+  }
+
+  function startBot(i, baseRate) {
+    const loop = () => {
+      if (!running) return;
+      counts[i]++;
+      // bots speed up and get tired like humans
+      const elapsed = (performance.now() - startAt) / PLAY_MS;
+      const rate = baseRate * (0.85 + 0.4 * Math.sin(elapsed * Math.PI)) * gsap.utils.random(0.8, 1.2);
+      botTimers[i] = setTimeout(loop, 1000 / rate);
+    };
+    botTimers[i] = setTimeout(loop, gsap.utils.random(150, 500));
+  }
+
+  function start() {
+    running = true; counts = [0, 0, 0]; leader = -1; startAt = performance.now();
+    btn.textContent = 'MASH!';
+    msg.textContent = 'Go go go!';
+    startBot(1, gsap.utils.random(6.5, 8.5));
+    startBot(2, gsap.utils.random(6.5, 8.5));
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish() {
+    running = false; botTimers.forEach(clearTimeout); cancelAnimationFrame(raf);
+    render();
+    const you = counts[0], best = Math.max(counts[1], counts[2]);
+    btn.disabled = true;
+    btn.textContent = 'TIME!';
+    if (you > best) { msg.textContent = `🏆 ${you} taps. You beat the bots. Lava moves 3 squares!`; party(true); }
+    else if (you === best) { msg.textContent = `😮 ${you} taps. Dead heat!`; party(false); }
+    else { msg.textContent = `😅 ${you} taps vs ${best}. The bots win this one. Again?`; }
+    setTimeout(() => { btn.disabled = false; btn.textContent = 'TAP TO START AGAIN'; timerEl.textContent = '10'; }, 1800);
+  }
+
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (btn.disabled) return;
+    if (!running) { start(); return; }
+    counts[0]++;
+    btn.classList.add('down');
+    setTimeout(() => btn.classList.remove('down'), 60);
+    if (navigator.vibrate) navigator.vibrate(8);
+  });
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+  window.addEventListener('resize', render);
+</script>
+</body>
+</html>
