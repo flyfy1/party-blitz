@@ -261,10 +261,13 @@ create table if not exists inputs (
 **Realtime 频道 `game:{id}` 的事件**（只有大屏发送；所有带名字的地方都附 `player_id`，手机按 id 判断是不是自己）
 ```ts
 { type: 'round',  round_idx, round_id, kind, options?, starts_at, ends_at }
-{ type: 'result', round_idx, ranks: [r0, r1, r2], scores: [s0, s1, s2], moves: [m0, m1, m2],
-                  positions: [p0, p1, p2], mvp: [{player_id, nick, faction, value}] }
+{ type: 'result', round_idx, kind, ranks: [r0, r1, r2], scores: [s0, s1, s2], moves: [m0, m1, m2],
+                  positions: [p0, p1, p2], mvp: [{player_id, nick, faction, value}],
+                  extra?: MinorityTally | RpsHands }   // 由 shared/extras.ts 的纯函数算出，只有 minority / rps 有
 { type: 'final',  winner: number | number[], positions, mvp_top3: [{player_id, nick, faction, points}] }
 // 大厅阶段不广播
+// 颁奖时 host 同时把 final payload 写进 games.state.last_final，漏掉广播的手机轮询时能拿到
+// minority 轮的 start_round p_options = shared/questions.ts 的 pickQuestion()
 ```
 频道是公开频道，任何拿到 anon key 的人都能往里发消息。这个风险接受（骗不到分数，计分只看数据库）。
 
