@@ -49,7 +49,11 @@ check('重复加入返回原阵营', again.faction === players[0].faction && aga
 
 // 4. get_state（大厅）
 const { data: state, ms: stateMs } = await rpc(host, 'get_state', { p_game: gameId });
-check('get_state', state.players.length === 4 && state.round === null, `counts=${JSON.stringify(state.counts)} ${stateMs}ms`);
+check('get_state', state.counts.reduce((a, b) => a + b, 0) === 4 && state.round === null, `counts=${JSON.stringify(state.counts)} ${stateMs}ms`);
+const { data: listed } = await rpc(host, 'list_players', { p_game: gameId, p_key: hostKey, p_after: null });
+check('list_players', listed.length === 4 && listed.every((p) => p.nickname.includes('#')), listed.map((p) => p.nickname).join(', '));
+const { data: listed2 } = await rpc(host, 'list_players', { p_game: gameId, p_key: hostKey, p_after: listed[1].joined_at });
+check('list_players p_after 只返回新玩家', listed2.length === 2, `${listed2.length}`);
 
 // 5. Realtime：两个"手机"订阅 game:{id}，host 广播 round
 const phones = [mk(), mk()];
@@ -98,16 +102,15 @@ for (const p of players) {
 await rpc(host, 'submit_input', { p_round: round.round_id, p_player: players[0].id, p_value: 999 });
 const { data: live, ms: liveMs } = await rpc(host, 'round_live', { p_round: round.round_id, p_key: hostKey });
 console.log(`   round_live → ${JSON.stringify(live)}（${liveMs}ms）`);
-const total = live.reduce((s, r) => s + r.sum, 0);
+const total = live.reduce((s, r) => s + r.value, 0);
 // 已玩约 1 秒 → 上限约 30×1+10 = 40；四人合计应远小于 999
 check('mash 刷分被截断', total < 100, `总和=${total}`);
 check('submit_input 延迟', true, submitMs.map((m) => m + 'ms').join(', '));
 const { error: liveBadKey } = await host.rpc('round_live', { p_round: round.round_id, p_key: 'wrong-key-123' });
 check('round_live 需要 host key', !!liveBadKey);
 
-// 9. 收卷
-const { data: inputs } = await rpc(host, 'round_inputs', { p_round: round.round_id, p_key: hostKey });
-check('round_inputs', inputs.length === 4 && inputs.every((i) => i.nickname));
+// 9. 收卷：round_live 每个玩家一行，带名字
+check('round_live 每人一行带名字', live.length === 4 && live.every((i) => i.nickname && i.player_id && i.first_at));
 
 // 10. 结束 1 秒后的提交被忽略
 await sleep(3500);
