@@ -7,6 +7,8 @@ import { Stage } from './Stage'
 import { HostPanel } from './HostPanel'
 import { BotPool } from './bots'
 import { Darts, FinalView, Intro, LiveBars, Lobby, Race, ResultView } from './views'
+import { MinorityStage } from './views/MinorityStage'
+import { RpsStage } from './views/RpsStage'
 import { sfx, unlockSfx } from './sfx'
 import { avgLatency, channelName, rpc, supabase } from '../shared/supabase'
 import { now, parseTs } from '../shared/time'
@@ -24,6 +26,7 @@ interface Snap {
   gameId: string
   roundIdx: number
   kind: RoundPayload['kind']
+  options: unknown
   players: (PlayerRow & { joined_at?: string })[]
   maxPlayers: number
   counts: Triple
@@ -61,10 +64,11 @@ interface Internal {
 
 const T = timingFromUrl()
 const params = new URLSearchParams(location.search)
+let booted = false // StrictMode runs effects twice in dev; boot must run once
 
 export default function Screen() {
   const [snap, setSnap] = useState<Snap>({
-    phase: 'boot', gameId: '', roundIdx: -1, kind: 'mash', players: [], maxPlayers: 120, counts: [0, 0, 0], live: [],
+    phase: 'boot', gameId: '', roundIdx: -1, kind: 'mash', options: null, players: [], maxPlayers: 120, counts: [0, 0, 0], live: [],
     result: null, steps: [], fin: null, channel: 'CLOSED', lastError: '', resumeRound: null, bots: null, tick: 0,
   })
   const [panel, setPanel] = useState(true)
@@ -80,7 +84,9 @@ export default function Screen() {
 
   // ── boot ──
   useEffect(() => {
-    let alive = true
+    if (booted) return
+    booted = true
+    const alive = true
     ;(async () => {
       try {
         let g = params.get('g')
@@ -134,7 +140,6 @@ export default function Screen() {
         }
       } catch (e) { fail(e); setPhase('error') }
     })()
-    return () => { alive = false }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── lobby polling: list_players every 1s (keeps running all game; cheap) ──
@@ -178,7 +183,7 @@ export default function Screen() {
       S.round = { id: r.round_id, kind, starts: parseTs(r.starts_at), ends: parseTs(r.ends_at) }
       S.roundIdx = idx
       S.finalized = false; S.finalizing = false; S.skip = false; S.lastLive = []
-      patch({ roundIdx: idx, kind, live: [], result: null, steps: [], resumeRound: null })
+      patch({ roundIdx: idx, kind, options, live: [], result: null, steps: [], resumeRound: null })
       await S.channel?.send({ type: 'broadcast', event: 'round', payload })
       S.bots?.onRound(payload)
       setPhase('intro')
@@ -317,6 +322,10 @@ export default function Screen() {
           ? <Race rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
           : snap.kind === 'stop'
           ? <Darts rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
+          : snap.kind === 'minority'
+          ? <MinorityStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} options={snap.options} />
+          : snap.kind === 'rps'
+          ? <RpsStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
         {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={SCHEDULE.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}

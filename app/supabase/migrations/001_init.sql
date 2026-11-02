@@ -99,12 +99,14 @@ declare
   v_nick   text;
   v_fac    smallint;
 begin
+  -- Serialize per game first, then check membership: two concurrent calls for the same
+  -- player must not both reach the insert (that raised 23505 duplicate key before).
+  perform pg_advisory_xact_lock(hashtext(p_game::text));
   select * into v_player from players where game_id = p_game and id = p_player;
   if found then
     return jsonb_build_object('faction', v_player.faction, 'nickname', v_player.nickname, 'server_now', now());
   end if;
 
-  perform pg_advisory_xact_lock(hashtext(p_game::text));
   select max_players into v_max from games where id = p_game;
   if v_max is null then raise exception 'game not found'; end if;
   select count(*) into v_count from players where game_id = p_game;
@@ -115,7 +117,8 @@ begin
   v_seq  := nextval('join_seq');
   v_fac  := (v_seq % 3)::smallint;
   v_nick := _random_nick(v_seq);
-  insert into players (game_id, id, nickname, faction) values (p_game, p_player, v_nick, v_fac);
+  insert into players (game_id, id, nickname, faction) values (p_game, p_player, v_nick, v_fac)
+  on conflict (game_id, id) do nothing;
   return jsonb_build_object('faction', v_fac, 'nickname', v_nick, 'server_now', now());
 end $$;
 
