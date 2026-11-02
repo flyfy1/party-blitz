@@ -128,6 +128,7 @@ export default function Screen() {
         const nb = Number(params.get('bots') || 0)
         if (nb > 0) {
           S.bots = new BotPool(g, nb)
+          ;(window as unknown as { __pb: unknown }).__pb = S.bots
           patch({ bots: { joined: 0, failed: 0, total: nb } })
           S.bots.join().catch(fail)
         }

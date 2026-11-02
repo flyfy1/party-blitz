@@ -25,7 +25,7 @@
 
 /* lobby */
 .lobby-names { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-content: flex-start; }
-.name-chip { padding: 6px 18px; border-radius: 999px; font-size: 26px; font-weight: 700; color: #1B1033; white-space: nowrap; }
+.name-chip { padding: 6px 16px; border-radius: 999px; font-size: 23px; font-weight: 700; color: #1B1033; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .stamp { position: absolute; inset: 0; display: grid; place-items: center; }
 .stamp span { font-size: 150px; font-weight: 800; color: #FF4D3D; border: 16px solid #FF4D3D; border-radius: 30px; padding: 0 40px; transform: rotate(-18deg); background: rgba(255,255,255,0.9); }
 

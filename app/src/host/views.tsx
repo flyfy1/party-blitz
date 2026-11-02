@@ -62,9 +62,9 @@ export function Lobby({ joinUrl, players, maxPlayers, resumeRound }: { joinUrl: 
         <div style={{ textAlign: 'center', fontSize: 22, opacity: 0.55 }}>{joinUrl}</div>
       </div>
 
-      <div style={{ position: 'absolute', left: 860, right: 60, top: 260, bottom: 60, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
+      <div style={{ position: 'absolute', left: 860, right: 60, top: 260, bottom: 60, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap: 24 }}>
         {FACTIONS.map((f, i) => (
-          <div key={f.id} className="card pop" style={{ borderColor: f.color, padding: 20, display: 'flex', flexDirection: 'column', animationDelay: `${i * 0.1}s` }}>
+          <div key={f.id} className="card pop" style={{ borderColor: f.color, padding: 20, display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden', animationDelay: `${i * 0.1}s` }}>
             <div style={{ textAlign: 'center' }}>
               <div className="float" style={{ fontSize: 130, lineHeight: 1 }}>{f.emoji}</div>
               <div style={{ fontSize: 44, fontWeight: 800, color: f.color }}>{f.name}</div>

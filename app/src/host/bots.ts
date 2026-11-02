@@ -10,6 +10,10 @@ export class BotPool {
   bots: Bot[] = []
   joined = 0
   failed = 0
+  submits = 0
+  submitErrors = 0
+  lastError = ''
+  scheduled = 0
   private timers: number[] = []
   private stopped = false
   private gameId: string
@@ -47,24 +51,31 @@ export class BotPool {
     this.clear()
     const starts = parseTs(p.starts_at), ends = parseTs(p.ends_at)
     const at = (serverMs: number, fn: () => void) => {
+      this.scheduled++
       this.timers.push(window.setTimeout(fn, Math.max(0, serverMs - now())))
     }
     for (const b of this.bots) {
-      const submit = (value: number) => { void supabase.rpc('submit_input', { p_round: p.round_id, p_player: b.id, p_value: value }) }
+      const submit = async (value: number) => {
+        this.submits++
+        try {
+          const { error } = await supabase.rpc('submit_input', { p_round: p.round_id, p_player: b.id, p_value: value })
+          if (error) { this.submitErrors++; this.lastError = error.message }
+        } catch (e) { this.submitErrors++; this.lastError = String(e) }
+      }
       if (p.kind === 'mash') {
         const tick = () => {
           const t = now()
           if (t > ends + 300) return
           const elapsed = Math.max(0, Math.min(t, ends) - starts) / 1000
-          submit(Math.floor(b.cps * elapsed * (0.9 + Math.random() * 0.2)))
+          void submit(Math.floor(b.cps * elapsed * (0.9 + Math.random() * 0.2)))
           if (t < ends) this.timers.push(window.setTimeout(tick, 1000))
         }
         at(starts + b.reaction, tick)
-        at(ends + 150, () => submit(Math.floor(b.cps * (ends - starts) / 1000 * (0.9 + Math.random() * 0.2))))
+        at(ends + 150, () => void submit(Math.floor(b.cps * (ends - starts) / 1000 * (0.9 + Math.random() * 0.2))))
       } else if (p.kind === 'stop') {
-        at(starts + 800 + Math.random() * Math.max(500, ends - starts - 1500), () => submit(Math.min(1, Math.abs(gauss()) * (0.15 + 0.6 * (1 - b.skill)))))
+        at(starts + 800 + Math.random() * Math.max(500, ends - starts - 1500), () => void submit(Math.min(1, Math.abs(gauss()) * (0.15 + 0.6 * (1 - b.skill)))))
       } else {
-        at(starts + 500 + Math.random() * Math.max(500, ends - starts - 1000), () => submit(Math.floor(Math.random() * 3)))
+        at(starts + 500 + Math.random() * Math.max(500, ends - starts - 1000), () => void submit(Math.floor(Math.random() * 3)))
       }
     }
   }
