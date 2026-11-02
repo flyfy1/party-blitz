@@ -17,11 +17,15 @@ VITE_SUPABASE_ANON_KEY=<publishable key，sb_publishable_ 开头>
 - **没有**保存 secret key 和数据库密码：前端用不到。数据库密码是建项目时随机生成的，没有记录下来；如果需要用 CLI 的 `db push`，就去 Dashboard → Settings → Database 重置
 
 ## 数据库现状
-`supabase/migrations/001_init.sql` 已经执行到云端，内容和 `DESIGN.md §7` 一致：
+`supabase/migrations/001_init.sql`（v2）已经执行到云端（2026-11-02 19:48 确认），内容和 `DESIGN.md §7` 一致：
 - 4 张表：`games`、`players`、`rounds`、`inputs`，都开启了 RLS 但没有 policy，所以 anon 不能直接读写
 - 玩家 RPC：`join_game`、`submit_input`、`get_state`
-- 大屏 RPC（需要 `p_key`）：`create_game`、`start_round`、`round_inputs`、`round_live`、`set_game_state`
-- 和 DESIGN.md 的一处差别：`get_state` 多返回了一个 `players` 数组，大厅画名字泡泡要用
+- 大屏 RPC（需要 `p_key`）：`create_game`、`list_players`、`start_round`、`round_live`、`set_game_state`
+- v2 相对 v1 的变化：
+  - 删除了 `round_inputs`
+  - 新增 `list_players(p_game, p_key, p_after)`：大厅每 1s 调用，只返回 `joined_at > p_after` 的新玩家（id、nickname、faction、joined_at）
+  - `get_state` 不再返回 `players` 数组，只返回 status、round_idx、state、max_players、server_now、当前 round 和三个阵营的人数 `counts`
+  - `round_live` 改成每个玩家一行（player_id、nickname、faction、value、first_at），阵营聚合在前端算
 
 **修改 schema 的方法**：在 SQL Editor 里粘贴 `create or replace function ...` 执行，同时更新 `001_init.sql`，保持一致。Supabase CLI 没有安装，本机也没有 Docker。
 
