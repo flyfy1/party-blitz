@@ -34,6 +34,8 @@ export interface ResultPayload {
   moves: Triple
   positions: Triple
   mvp: MvpEntry[]
+  /** minority: MinorityExtra, rps: RpsExtra (see extras.ts); absent for other kinds */
+  extra?: unknown
 }
 
 export interface FinalPayload {
