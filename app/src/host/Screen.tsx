@@ -9,6 +9,12 @@ import { BotPool } from './bots'
 import { CornerQr, Darts, FinalView, Intro, LiveBars, Lobby, Race, ResultView, useFullscreen } from './views'
 import { MinorityStage } from './views/MinorityStage'
 import { RpsStage } from './views/RpsStage'
+import { ReactStage } from './views/ReactStage'
+import { QuizStage } from './views/QuizStage'
+import { HoldStage } from './views/HoldStage'
+import { pickQuiz, parseQuizOptions } from '../shared/quiz'
+import { quizExtra, holdExtra } from '../shared/scoring.p3'
+import { makeReactOptions } from '../shared/react'
 import { sfx, unlockSfx } from './sfx'
 import { avgLatency, channelName, rpc, supabase } from '../shared/supabase'
 import { now, parseTs } from '../shared/time'
@@ -47,7 +53,7 @@ interface Internal {
   gameId: string
   key: string
   roundIdx: number
-  round: { id: string; kind: RoundPayload['kind']; starts: number; ends: number } | null
+  round: { id: string; kind: RoundPayload['kind']; starts: number; ends: number; options: unknown } | null
   positions: Triple
   mvpPoints: GameState['mvp_points']
   counts: Triple
@@ -192,7 +198,8 @@ export default function Screen() {
       const kind = S.schedule[idx]
       const isFinal = idx === S.schedule.length - 1
       const options: unknown = kind === 'minority' ? pickQuestion()
-        : (kind as string) === 'react' ? { go_at: new Date(now() + T.intro + 3000 + Math.random() * 4000).toISOString() }
+        : kind === 'quiz' ? pickQuiz()
+        : kind === 'react' ? makeReactOptions(now() + T.intro)
         : null
       const r = await rpc<{ round_id: string; starts_at: string; ends_at: string }>('start_round', {
         p_game: S.gameId, p_key: S.key, p_idx: idx, p_kind: kind, p_options: options, p_intro_ms: T.intro, p_play_ms: T.play,
@@ -200,7 +207,7 @@ export default function Screen() {
       // authoritative counts for scoring
       try { const st = await rpc<StateResponse>('get_state', { p_game: S.gameId }); S.counts = st.counts; patch({ counts: st.counts }) } catch { /* keep lobby counts */ }
       const payload: RoundPayload & { total_rounds: number } = { type: 'round', round_idx: idx, round_id: r.round_id, kind, options: options ?? undefined, starts_at: r.starts_at, ends_at: r.ends_at, final: isFinal, total_rounds: S.schedule.length }
-      S.round = { id: r.round_id, kind, starts: parseTs(r.starts_at), ends: parseTs(r.ends_at) }
+      S.round = { id: r.round_id, kind, starts: parseTs(r.starts_at), ends: parseTs(r.ends_at), options }
       S.roundIdx = idx
       S.finalized = false; S.finalizing = false; S.skip = false; S.lastLive = []
       patch({ roundIdx: idx, kind, options, live: [], result: null, steps: [], resumeRound: null })
@@ -218,9 +225,10 @@ export default function Screen() {
     const idx = S.roundIdx, round = S.round
     let rows: InputRow[] = S.lastLive
     try { rows = await rpc<InputRow[]>('round_live', { p_round: round.id, p_key: S.key }, { retries: 2 }) } catch (e) { fail(e) }
-    const res = scoreRound(round.kind, rows, S.counts, S.positions, idx === S.schedule.length - 1)
+    const res = scoreRound(round.kind, rows, S.counts, S.positions, idx === S.schedule.length - 1, round.options)
     const mvpPoints = addMvpPoints(S.mvpPoints, res.mvp, idx)
-    const extra = round.kind === 'minority' ? minorityExtra(rows) : round.kind === 'rps' ? rpsExtra(rows) : undefined
+    const extra = round.kind === 'minority' ? minorityExtra(rows) : round.kind === 'rps' ? rpsExtra(rows)
+      : round.kind === 'quiz' ? quizExtra(rows, parseQuizOptions(round.options).answer) : round.kind === 'hold' ? holdExtra(rows, S.counts) : undefined
     const payload: ResultPayload = { type: 'result', round_idx: idx, kind: round.kind, ranks: res.ranks, scores: res.scores, moves: res.moves, positions: res.positions, mvp: res.mvp, ...(extra ? { extra } : {}) }
     const state: GameState = { positions: res.positions, round_idx: idx, last_result: payload, mvp_points: mvpPoints }
     S.positions = res.positions; S.mvpPoints = mvpPoints
@@ -376,6 +384,12 @@ export default function Screen() {
           ? <MinorityStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} options={snap.options} />
           : snap.kind === 'rps'
           ? <RpsStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
+          : snap.kind === 'quiz'
+          ? <QuizStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} options={snap.options} />
+          : snap.kind === 'hold'
+          ? <HoldStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
+          : snap.kind === 'react'
+          ? <ReactStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} options={snap.options} startsAt={S.round?.starts ?? 0} />
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
         {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={snap.schedule.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}

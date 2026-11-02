@@ -2,7 +2,7 @@
 // doubled final. Kinds the host cannot render yet are filtered out via SUPPORTED_KINDS.
 import type { Kind } from '../shared/types'
 
-export const SUPPORTED_KINDS: string[] = ['mash', 'stop', 'minority', 'rps']
+export const SUPPORTED_KINDS: string[] = ['mash', 'stop', 'minority', 'rps', 'react', 'quiz', 'hold']
 const ALL = ['mash', 'stop', 'quiz', 'react', 'minority', 'hold', 'rps']
 
 export interface Preset { id: string; label: string; build: () => string[] }

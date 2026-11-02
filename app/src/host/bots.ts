@@ -74,6 +74,13 @@ export class BotPool {
         at(ends + 150, () => void submit(Math.floor(b.cps * (ends - starts) / 1000 * (0.9 + Math.random() * 0.2))))
       } else if (p.kind === 'stop') {
         at(starts + 800 + Math.random() * Math.max(500, ends - starts - 1500), () => void submit(Math.min(1, Math.abs(gauss()) * (0.15 + 0.6 * (1 - b.skill)))))
+      } else if (p.kind === 'react') {
+        const opt = p.options as { go_at?: string; go_after_ms?: number } | undefined
+        const goAt = typeof opt?.go_after_ms === 'number' ? starts + opt.go_after_ms : opt?.go_at ? parseTs(opt.go_at) : starts + 4000
+        const ms = Math.round(180 + Math.random() * 500 * (1.3 - b.skill))
+        at(goAt + ms, () => void submit(ms))
+      } else if (p.kind === 'hold') {
+        at(starts + 5000 + Math.random() * 800, () => void submit(Math.min(1, Math.abs(gauss()) * 0.25 * (1.3 - b.skill))))
       } else {
         at(starts + 500 + Math.random() * Math.max(500, ends - starts - 1000), () => void submit(Math.floor(Math.random() * 3)))
       }
