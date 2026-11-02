@@ -83,7 +83,7 @@ console.log(`Load test: N=${N}, intro=${INTRO_MS}ms, play=${PLAY_MS}ms → ${url
 const host = mk();
 allClients.push(host);
 const hostKey = randomUUID().replaceAll('-', '');
-const { game_id: gameId } = await rpc(host, 'create_game', { p_key: hostKey, p_max_players: N });
+const { game_id: gameId } = await rpc(host, 'create_game', { p_key: hostKey, p_admin: process.env.PB_HOST_ADMIN, p_max_players: N });
 console.log(`game ${gameId}`);
 
 // ── 2. N players: join_game + subscribe ──────────────────────────────────────

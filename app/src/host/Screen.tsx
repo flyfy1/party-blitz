@@ -6,7 +6,7 @@ import './host.css'
 import { Stage } from './Stage'
 import { HostPanel } from './HostPanel'
 import { BotPool } from './bots'
-import { Darts, FinalView, Intro, LiveBars, Lobby, Race, ResultView } from './views'
+import { CornerQr, Darts, FinalView, Intro, LiveBars, Lobby, Race, ResultView, useFullscreen } from './views'
 import { MinorityStage } from './views/MinorityStage'
 import { RpsStage } from './views/RpsStage'
 import { sfx, unlockSfx } from './sfx'
@@ -19,7 +19,7 @@ import { minorityExtra, rpsExtra } from '../shared/extras'
 import { pickQuestion } from '../shared/questions'
 import type { FinalPayload, GameState, InputRow, PlayerRow, ResultPayload, RoundPayload, StateResponse, Triple } from '../shared/types'
 
-type Phase = 'boot' | 'lobby' | 'intro' | 'play' | 'collect' | 'result' | 'final' | 'error'
+type Phase = 'boot' | 'auth' | 'lobby' | 'intro' | 'play' | 'collect' | 'result' | 'final' | 'error'
 
 interface Snap {
   phase: Phase
@@ -72,6 +72,10 @@ export default function Screen() {
     result: null, steps: [], fin: null, channel: 'CLOSED', lastError: '', resumeRound: null, bots: null, tick: 0,
   })
   const [panel, setPanel] = useState(true)
+  const [admin, setAdmin] = useState(() => { try { return localStorage.getItem('pb:admin') ?? '' } catch { return '' } })
+  const [authError, setAuthError] = useState('')
+  const [hostsOnly, setHostsOnly] = useState(false)
+  const fs = useFullscreen()
   const S = useRef<Internal>({
     gameId: '', key: '', roundIdx: -1, round: null, positions: [0, 0, 0], mvpPoints: {}, counts: [0, 0, 0], lastLive: [],
     finalizing: false, finalized: false, nextAt: 0, starting: false, retryAt: 0, skip: false, channel: null, bots: null,
@@ -95,9 +99,18 @@ export default function Screen() {
         keep.set('screen', '1')
         for (const k of ['bots', 'fast']) if (params.get(k)) keep.set(k, params.get(k)!)
         if (!g) {
+          // No game yet: hosts only. Ask for the passphrase (remembered in localStorage).
+          let secret = ''
+          try { secret = localStorage.getItem('pb:admin') ?? '' } catch { /* ignore */ }
+          if (!secret) { setPhase('auth'); return }
           key = crypto.randomUUID().replaceAll('-', '')
-          const r = await rpc<{ game_id: string }>('create_game', { p_key: key }, { retries: 2 })
-          g = r.game_id
+          try {
+            const r = await rpc<{ game_id: string }>('create_game', { p_key: key, p_admin: secret }, { retries: 1 })
+            g = r.game_id
+          } catch (e) {
+            if (String(e instanceof Error ? e.message : e).includes('hosts only')) { setHostsOnly(true); setPhase('auth'); return }
+            throw e
+          }
         }
         if (key) { try { sessionStorage.setItem(`pb:hostkey:${g}`, key) } catch { /* ignore */ } }
         else { try { key = sessionStorage.getItem(`pb:hostkey:${g}`) } catch { /* ignore */ } }
@@ -284,9 +297,19 @@ export default function Screen() {
     if (ph === 'intro' || ph === 'play' || ph === 'collect') { S.skip = true }
     else if (ph === 'result') { S.nextAt = 0 }
   }
+  const submitAdmin = () => {
+    const v = admin.trim()
+    if (!v) return
+    try { localStorage.setItem('pb:admin', v) } catch { /* ignore */ }
+    setAuthError('')
+    location.reload()
+  }
   const onReset = () => {
+    let secret = ''
+    try { secret = localStorage.getItem('pb:admin') ?? '' } catch { /* ignore */ }
+    if (!secret) { location.href = '/?screen=1'; return }
     const key = crypto.randomUUID().replaceAll('-', '')
-    rpc<{ game_id: string }>('create_game', { p_key: key }, { retries: 2 }).then((r) => {
+    rpc<{ game_id: string }>('create_game', { p_key: key, p_admin: secret }, { retries: 1 }).then((r) => {
       const q = new URLSearchParams({ screen: '1', g: r.game_id, key })
       for (const k of ['bots', 'fast']) if (params.get(k)) q.set(k, params.get(k)!)
       S.bots?.stop()
@@ -315,6 +338,22 @@ export default function Screen() {
     <>
       <Stage>
         {snap.phase === 'boot' && <div className="title" style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 80 }}>Loading…</div>}
+        {snap.phase === 'auth' && (
+          <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
+            {hostsOnly ? (
+              <div className="title pop" style={{ fontSize: 64, padding: 100 }}>Hosts only. Scan the QR code on stage to play.</div>
+            ) : (
+              <div className="card pop" style={{ padding: 50, width: 820 }}>
+                <div className="title" style={{ fontSize: 64, marginBottom: 20 }}>PARTY BLITZ ⚡ host</div>
+                <div style={{ fontSize: 28, opacity: 0.8, marginBottom: 20 }}>Host passphrase</div>
+                <input data-role="admin" type="password" value={admin} autoFocus onChange={(e) => setAdmin(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submitAdmin() }}
+                  style={{ fontSize: 40, padding: '14px 24px', borderRadius: 18, border: '4px solid rgba(255,255,255,0.3)', width: '100%', textAlign: 'center', fontFamily: 'inherit' }} />
+                <button data-role="create" onClick={submitAdmin} style={{ marginTop: 24, fontSize: 36, fontWeight: 800, padding: '16px 50px', borderRadius: 20, background: '#FFD633', color: '#1B1033' }}>Create game</button>
+                {authError && <div style={{ color: '#FFB199', marginTop: 16, fontSize: 24 }}>{authError}</div>}
+              </div>
+            )}
+          </div>
+        )}
         {snap.phase === 'error' && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 48, color: '#FFB199', textAlign: 'center', padding: 100 }}>{snap.lastError}</div>}
         {snap.phase === 'lobby' && <Lobby joinUrl={joinUrl} players={snap.players} maxPlayers={snap.maxPlayers} resumeRound={snap.resumeRound} />}
         {snap.phase === 'intro' && <Intro kind={snap.kind} roundIdx={snap.roundIdx} total={SCHEDULE.length} secondsLeft={secondsLeft} final={isFinalRound(snap.roundIdx)} />}
@@ -329,11 +368,16 @@ export default function Screen() {
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
         {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={SCHEDULE.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}
+        {snap.phase !== 'lobby' && snap.phase !== 'boot' && snap.phase !== 'error' && snap.gameId && <CornerQr joinUrl={joinUrl} />}
+        {snap.phase === 'lobby' && !fs.full && (
+          <button onClick={fs.enter} style={{ position: 'absolute', right: 30, top: 30, padding: '10px 22px', borderRadius: 14, fontSize: 24, fontWeight: 800, background: 'rgba(255,255,255,0.15)', color: '#fff', border: '3px solid rgba(255,255,255,0.3)' }}>⛶ Fullscreen</button>
+        )}
       </Stage>
       <HostPanel
         visible={panel} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={SCHEDULE.length} players={snap.players.length}
         channel={snap.channel} rpcMs={avgLatency()} bots={snap.bots} lastError={snap.lastError} gameId={snap.gameId}
         canStart={canStart} startLabel={startLabel} onStart={onStart} onSkip={onSkip} onReset={onReset}
+        isFullscreen={fs.full} onFullscreen={fs.enter}
       />
     </>
   )

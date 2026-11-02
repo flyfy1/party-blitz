@@ -27,7 +27,7 @@ create table if not exists rounds (
   id        uuid primary key default gen_random_uuid(),
   game_id   uuid not null references games(id) on delete cascade,
   idx       int  not null,
-  kind      text not null,                            -- mash | stop | minority | rps
+  kind      text not null,                            -- mash | stop | minority | rps | quiz | hold | react
   options   jsonb,
   starts_at timestamptz not null,
   ends_at   timestamptz not null,
@@ -58,6 +58,12 @@ begin
 end $$;
 alter table inputs drop constraint if exists inputs_player_id_fkey;
 create index if not exists players_game_idx on players(game_id, joined_at);
+
+-- Hosts only: create_game requires a passphrase stored in this table. The value is NEVER
+-- committed. Run once by hand in the Supabase SQL editor (and keep it out of git):
+--   insert into host_admin (secret) values ('<your passphrase>') on conflict do nothing;
+create table if not exists host_admin (secret text primary key);
+alter table host_admin enable row level security;
 
 alter table games   enable row level security;
 alter table players enable row level security;
@@ -157,6 +163,21 @@ begin
     if p_value is null or p_value not in (0, 1, 2) then raise exception 'bad value'; end if;
     insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, p_value)
     on conflict (round_id, player_id) do update set value = excluded.value, updated_at = now();
+  elsif v_round.kind = 'quiz' then
+    -- answer 0/1/2, first answer counts
+    if p_value is null or p_value not in (0, 1, 2) then raise exception 'bad value'; end if;
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, p_value)
+    on conflict (round_id, player_id) do nothing;
+  elsif v_round.kind = 'hold' then
+    -- accuracy in [0,1], latest wins
+    v_value := least(greatest(coalesce(p_value, 1), 0), 1);
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, v_value)
+    on conflict (round_id, player_id) do update set value = excluded.value, updated_at = now();
+  elsif v_round.kind = 'react' then
+    -- reaction time in ms, [0,2000], first tap counts
+    v_value := least(greatest(coalesce(p_value, 2000), 0), 2000);
+    insert into inputs (round_id, player_id, faction, value) values (p_round, p_player, v_fac, v_value)
+    on conflict (round_id, player_id) do nothing;
   else
     raise exception 'unknown kind %', v_round.kind;
   end if;
@@ -185,10 +206,15 @@ $$;
 
 -- ── 大屏 RPC（都要带 p_key）──────────────────────────────
 
-create or replace function create_game(p_key text, p_max_players int default 120)
+drop function if exists create_game(text, int);
+drop function if exists create_game(text);
+create or replace function create_game(p_key text, p_admin text, p_max_players int default 120)
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_id uuid;
 begin
+  if p_admin is null or not exists (select 1 from host_admin where secret = p_admin) then
+    raise exception 'hosts only';
+  end if;
   if p_key is null or length(p_key) < 8 then raise exception 'host key too short'; end if;
   insert into games (host_key, max_players) values (p_key, p_max_players) returning id into v_id;
   return jsonb_build_object('game_id', v_id, 'server_now', now());
@@ -253,7 +279,7 @@ revoke execute on function _random_nick(bigint) from public, anon, authenticated
 revoke execute on function _check_host(uuid, text) from public, anon, authenticated;
 grant execute on function
   join_game(uuid, uuid), submit_input(uuid, uuid, float8), get_state(uuid),
-  create_game(text, int), list_players(uuid, text, timestamptz),
+  create_game(text, text, int), list_players(uuid, text, timestamptz),
   start_round(uuid, text, int, text, jsonb, int, int),
   round_live(uuid, text), set_game_state(uuid, text, text, jsonb)
   to anon;

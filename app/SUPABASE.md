@@ -29,6 +29,14 @@ VITE_SUPABASE_ANON_KEY=<publishable key，sb_publishable_ 开头>
 
 **修改 schema 的方法**：在 SQL Editor 里粘贴 `create or replace function ...` 执行，同时更新 `001_init.sql`，保持一致。Supabase CLI 没有安装，本机也没有 Docker。
 
+## 主持人口令（host passphrase）
+`create_game` 只允许知道口令的人新建一局（否则报 `hosts only`）。口令存在 `host_admin` 表里，**不进 git**。
+执行完 `001_init.sql` 后，在 SQL Editor 里手动跑一次：
+```sql
+insert into host_admin (secret) values ('<你的口令>') on conflict do nothing;
+```
+大屏第一次打开会要求输入口令，之后存在该浏览器的 localStorage 里。本地跑 `npm run smoke` 需要在 `app/.env` 加一行 `PB_HOST_ADMIN=<口令>`（没有 `VITE_` 前缀，不会被打包）。
+
 ## 验证
 ```bash
 npm run smoke

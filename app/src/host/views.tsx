@@ -53,13 +53,13 @@ export function Lobby({ joinUrl, players, maxPlayers, resumeRound }: { joinUrl: 
         {full && <div style={{ fontSize: 36, color: '#FFB199' }}>Full! Open the same link to spectate and cheer 📣</div>}
       </div>
 
-      <div style={{ position: 'absolute', left: 80, top: 260, width: 700 }}>
-        <div className="pop" style={{ position: 'relative', background: '#fff', borderRadius: 40, padding: 24, width: 700, height: 700 }}>
-          {qr && <img src={qr} alt="QR" style={{ width: 652, height: 652, display: 'block', imageRendering: 'pixelated' }} />}
+      <div style={{ position: 'absolute', left: 80, top: 250, width: 700 }}>
+        <div className="pop" style={{ position: 'relative', background: '#fff', borderRadius: 40, padding: 22, width: 700, height: 660 }}>
+          {qr && <img src={qr} alt="QR" style={{ width: 616, height: 616, display: 'block', imageRendering: 'pixelated' }} />}
           {full && <div className="stamp"><span>FULL</span></div>}
         </div>
-        <div style={{ textAlign: 'center', marginTop: 18, fontSize: 48, fontWeight: 800 }}>{host}</div>
-        <div style={{ textAlign: 'center', fontSize: 22, opacity: 0.55 }}>{joinUrl}</div>
+        <div style={{ textAlign: 'center', marginTop: 10, fontSize: 48, fontWeight: 800, lineHeight: 1.1 }}>{host}</div>
+        <div style={{ textAlign: 'center', fontSize: 20, opacity: 0.55, lineHeight: 1.2 }}>{joinUrl}</div>
       </div>
 
       <div style={{ position: 'absolute', left: 860, right: 60, top: 260, bottom: 60, display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)', gap: 24 }}>
@@ -237,7 +237,7 @@ export function ResultView({ result, steps, total }: { result: ResultPayload; st
       </div>
       <div className="card pop" style={{ position: 'absolute', top: 80, right: 60, width: 640, padding: 20, animationDelay: '0.4s' }}>
         <div style={{ fontSize: 34, fontWeight: 800, marginBottom: 8 }}>🏆 Round MVP</div>
-        {result.mvp.length === 0 && <div style={{ opacity: 0.6, fontSize: 28 }}>Nobody tapped!</div>}
+        {result.mvp.length === 0 && <div style={{ opacity: 0.6, fontSize: 28 }}>{result.kind === 'mash' ? 'Nobody tapped!' : 'No MVP this round'}</div>}
         {result.mvp.map((m, i) => (
           <div key={m.player_id} className="pop" style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 36, fontWeight: 800, padding: '4px 0', animationDelay: `${0.5 + i * 0.15}s` }}>
             <span>{medal(i + 1)}</span><span>{FACTIONS[m.faction].emoji}</span>
@@ -360,4 +360,33 @@ export function Darts({ rows, counts, secondsLeft, collecting, roundIdx }: { row
       {collecting && <BigWord text="TIME'S UP!" />}
     </div>
   )
+}
+
+
+// ── Corner QR (late joiners) + fullscreen button ─────────────────────────
+
+export function CornerQr({ joinUrl }: { joinUrl: string }) {
+  const [qr, setQr] = useState('')
+  useEffect(() => { QRCode.toDataURL(joinUrl, { width: 400, margin: 1, errorCorrectionLevel: 'M' }).then(setQr) }, [joinUrl])
+  const host = joinUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  return (
+    <div className="pop" style={{ position: 'absolute', left: 24, bottom: 24, width: 220, zIndex: 60, textAlign: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 18, padding: 8 }}>
+        {qr && <img src={qr} alt="QR" style={{ width: 204, height: 204, display: 'block' }} />}
+      </div>
+      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, textShadow: '0 2px 0 #1B1033' }}>{host}</div>
+      <div style={{ fontSize: 16, opacity: 0.7 }}>Scan to join late</div>
+    </div>
+  )
+}
+
+export function useFullscreen() {
+  const [full, setFull] = useState(!!document.fullscreenElement)
+  useEffect(() => {
+    const on = () => setFull(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', on)
+    return () => document.removeEventListener('fullscreenchange', on)
+  }, [])
+  const enter = () => { document.documentElement.requestFullscreen?.().catch(() => {}) }
+  return { full, enter }
 }

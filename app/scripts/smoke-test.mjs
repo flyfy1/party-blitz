@@ -23,7 +23,11 @@ const rpc = async (client, fn, args) => {
 
 // 1. 建局（max_players = 4，方便测满员）
 const hostKey = randomUUID().replaceAll('-', '');
-const { data: created, ms: createMs } = await rpc(host, 'create_game', { p_key: hostKey, p_max_players: 4 });
+const admin = process.env.PB_HOST_ADMIN;
+if (!admin) { console.error('PB_HOST_ADMIN is not set in app/.env (host passphrase, see SUPABASE.md)'); process.exit(1); }
+const { error: notHost } = await host.rpc('create_game', { p_key: hostKey, p_admin: 'wrong-passphrase', p_max_players: 4 });
+check('create_game 拒绝错误口令', !!notHost && /hosts only/.test(notHost.message));
+const { data: created, ms: createMs } = await rpc(host, 'create_game', { p_key: hostKey, p_admin: admin, p_max_players: 4 });
 const gameId = created.game_id;
 check('create_game', !!gameId, `${createMs}ms`);
 

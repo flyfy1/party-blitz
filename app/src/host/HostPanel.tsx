@@ -16,6 +16,8 @@ export interface PanelProps {
   onStart: () => void
   onSkip: () => void
   onReset: () => void
+  isFullscreen: boolean
+  onFullscreen: () => void
 }
 
 export function HostPanel(p: PanelProps) {
@@ -25,7 +27,8 @@ export function HostPanel(p: PanelProps) {
   return (
     <div className="panel">
       <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Host panel <span style={{ opacity: 0.5, fontWeight: 400 }}>(H to hide)</span></div>
-      <button disabled={!p.canStart} onClick={p.onStart}>{p.startLabel}</button>
+      {!p.isFullscreen && <button onClick={p.onFullscreen}>⛶ Fullscreen</button>}
+      <button data-role="start" disabled={!p.canStart} onClick={p.onStart}>{p.startLabel}</button>
       <button onClick={p.onSkip} disabled={p.phase === 'lobby' || p.phase === 'final' || p.phase === 'boot'}>Skip phase</button>
       {confirmReset
         ? <button className="danger" onClick={p.onReset}>Confirm reset (new game + QR)</button>
