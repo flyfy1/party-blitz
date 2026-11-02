@@ -1,0 +1,342 @@
+/* Phone UI: bright, flat, thick borders, rounded, bouncy. --fc / --fl / --fd come from the faction. */
+.ph {
+  --fc: #1b1033;
+  --fl: #fff;
+  --fd: #000;
+  height: 100dvh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc);
+  color: #fff;
+  padding: max(12px, env(safe-area-inset-top)) 16px max(12px, env(safe-area-inset-bottom));
+  overflow: hidden;
+  text-align: center;
+  transition: background 0.4s;
+}
+.ph-head {
+  flex: none;
+  background: rgba(0, 0, 0, 0.28);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  padding: 8px 16px;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ph-head b {
+  font-weight: 800;
+}
+.ph-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+}
+.ph-game {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-height: 0;
+  padding-top: 8px;
+}
+.ph-logo {
+  font-size: 96px;
+  line-height: 1;
+}
+.ph-title {
+  font-size: 44px;
+  line-height: 1.1;
+}
+.ph-sub {
+  font-size: 17px;
+  opacity: 0.85;
+}
+.ph-pill {
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 999px;
+  padding: 8px 18px;
+  font-size: 16px;
+  font-weight: 700;
+}
+.ph-btn {
+  margin-top: 8px;
+  background: #fff;
+  color: #1b1033;
+  font-weight: 800;
+  font-size: 20px;
+  padding: 14px 32px;
+  border-radius: 999px;
+  border: 4px solid #1b1033;
+}
+.ph-mascot {
+  font-size: 120px;
+  line-height: 1;
+}
+.ph-big {
+  font-size: 40px;
+  line-height: 1.1;
+  text-shadow: 0 4px 0 rgba(0, 0, 0, 0.25);
+}
+.ph-roundno {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+.ph-icon {
+  font-size: 110px;
+  line-height: 1;
+}
+.ph-verb {
+  font-size: 48px;
+  line-height: 1;
+  text-shadow: 0 5px 0 rgba(0, 0, 0, 0.3);
+}
+.ph-countdown {
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+}
+.ph-timer {
+  font-size: 34px;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 999px;
+  min-width: 64px;
+  padding: 2px 16px;
+  line-height: 1.3;
+}
+.ph-count {
+  font-size: 120px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+  animation: bump 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ph-count-static {
+  font-size: 96px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* ⚡ mash */
+.mash-btn {
+  position: relative;
+  overflow: hidden;
+  margin-top: auto;
+  width: 100%;
+  height: 52dvh;
+  border-radius: 40px;
+  border: 7px solid rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  box-shadow: 0 10px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.05s;
+  touch-action: manipulation;
+}
+.mash-btn:active {
+  transform: translateY(6px) scale(0.98);
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+.mash-label {
+  font-size: 72px;
+  pointer-events: none;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+}
+.ripple {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  margin: -10px 0 0 -10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  pointer-events: none;
+  animation: ripple 0.5s ease-out forwards;
+}
+
+/* 🎯 stop */
+.stop-area {
+  justify-content: center;
+  gap: 18px;
+  touch-action: manipulation;
+}
+.stop-bar {
+  position: relative;
+  width: 100%;
+  height: 84px;
+  border-radius: 24px;
+  border: 6px solid rgba(255, 255, 255, 0.95);
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 0 rgba(0, 0, 0, 0.3);
+  margin-bottom: 10dvh;
+}
+.stop-center {
+  position: absolute;
+  left: 47.5%;
+  width: 5%;
+  top: 0;
+  bottom: 0;
+  background: #ffd43b;
+  box-shadow: 0 0 24px #ffd43b;
+}
+.stop-mark {
+  position: absolute;
+  width: 3px;
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.35);
+}
+.stop-ptr {
+  position: absolute;
+  width: 18px;
+  top: -14px;
+  bottom: -14px;
+  border-radius: 8px;
+  background: #fff;
+  border: 4px solid var(--fd);
+  box-shadow: 0 0 12px rgba(0, 0, 0, 0.5);
+}
+.stop-ptr.frozen {
+  background: #ffd43b;
+  animation: bump 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* results */
+.ph-result {
+  gap: 10px;
+}
+.ph-result.gold {
+  animation: gold 0.8s ease-in-out infinite alternate;
+}
+.ph-mvp {
+  font-size: 30px;
+  color: #ffd43b;
+  text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35);
+}
+.ph-own {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1;
+  text-shadow: 0 6px 0 rgba(0, 0, 0, 0.3);
+}
+.ph-board {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+.ph-lane {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 22px;
+  opacity: 0.75;
+}
+.ph-lane.me {
+  opacity: 1;
+}
+.ph-lane-track {
+  flex: 1;
+  height: 18px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  overflow: hidden;
+}
+.ph-lane-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ph-lane-pos {
+  width: 28px;
+  font-weight: 800;
+  text-align: right;
+  font-size: 18px;
+}
+.ph-mvplist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 18px;
+  padding: 10px 16px;
+  width: 100%;
+}
+.ph-mvplist .me {
+  color: #ffd43b;
+  font-weight: 800;
+}
+
+/* animations */
+.pop {
+  animation: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.float {
+  animation: float 2s ease-in-out infinite;
+}
+.spin {
+  animation: spin 1.2s linear infinite;
+}
+@keyframes pop {
+  0% {
+    transform: scale(0.3);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes bump {
+  0% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes ripple {
+  to {
+    transform: scale(14);
+    opacity: 0;
+  }
+}
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes gold {
+  from {
+    box-shadow: inset 0 0 0 0 #ffd43b;
+  }
+  to {
+    box-shadow: inset 0 0 0 14px #ffd43b;
+  }
+}

@@ -6,8 +6,8 @@ export const FACTIONS = [
 ] as const
 
 export const KIND_META = {
-  mash: { icon: '⚡', title: 'Tap Frenzy', verb: 'TAP!', hint: 'Tap as fast as you can' },
+  mash: { icon: '⚡', title: 'Tap Frenzy', verb: 'MASH!', hint: 'Tap as fast as you can' },
   stop: { icon: '🎯', title: 'Perfect Stop', verb: 'STOP IN THE MIDDLE!', hint: 'One tap. Stop the bar at the center' },
-  minority: { icon: '🤔', title: 'Minority Wins', verb: 'PICK THE RARE ONE!', hint: 'Choose what fewest people choose' },
+  minority: { icon: '🤔', title: 'Minority Wins', verb: 'PICK THE MINORITY!', hint: 'Choose what fewest people choose' },
   rps: { icon: '✊', title: 'Faction RPS', verb: 'THROW!', hint: 'Vote your faction’s hand' },
 } as const
