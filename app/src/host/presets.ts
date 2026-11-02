@@ -3,18 +3,18 @@
 import type { Kind } from '../shared/types'
 
 export const SUPPORTED_KINDS: string[] = ['mash', 'stop', 'minority', 'rps', 'react', 'quiz', 'hold']
-const ALL = ['mash', 'stop', 'quiz', 'react', 'minority', 'hold', 'rps']
+const NON_MASH = ['stop', 'quiz', 'react', 'minority', 'hold', 'rps']
 
 export interface Preset { id: string; label: string; build: () => string[] }
 
+// Every preset uses each kind at most once; mash is always the last (doubled) round.
 export const PRESETS: Preset[] = [
-  { id: 'all', label: 'All games', build: () => ['mash', 'stop', 'quiz', 'react', 'minority', 'hold', 'rps', 'mash'] },
-  { id: 'classic', label: 'Classic 5', build: () => ['mash', 'stop', 'minority', 'rps', 'mash'] },
+  { id: 'all', label: 'All games (7)', build: () => ['stop', 'quiz', 'react', 'minority', 'hold', 'rps', 'mash'] },
+  { id: 'classic', label: 'Classic 5', build: () => ['stop', 'minority', 'rps', 'quiz', 'mash'] },
   { id: 'random', label: 'Random 6', build: () => {
-    const pool = ALL.filter((k) => SUPPORTED_KINDS.includes(k))
+    const pool = NON_MASH.filter((k) => SUPPORTED_KINDS.includes(k))
     for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]] }
-    const picked = pool.filter((k) => k !== 'mash').slice(0, 5)
-    return [...picked, 'mash']
+    return [...pool.slice(0, 5), 'mash']
   } },
 ]
 
@@ -25,6 +25,7 @@ export function loadSchedule(): { presetId: string; schedule: Kind[] } {
     const raw = sessionStorage.getItem(KEY)
     if (raw) {
       const v = JSON.parse(raw) as { presetId: string; schedule: string[] }
+      if (v.presetId !== 'random') return applyPreset(v.presetId)
       const schedule = v.schedule.filter((k) => SUPPORTED_KINDS.includes(k)) as Kind[]
       if (schedule.length) return { presetId: v.presetId, schedule }
     }

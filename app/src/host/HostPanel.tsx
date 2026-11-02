@@ -22,15 +22,19 @@ export interface PanelProps {
   presetId: string
   schedule: string[]
   onPreset: (id: string) => void
+  onToggle: () => void
 }
 
 export function HostPanel(p: PanelProps) {
   const [confirmReset, setConfirmReset] = useState(false)
   useEffect(() => { if (!p.visible) setConfirmReset(false) }, [p.visible])
-  if (!p.visible) return null
+  if (!p.visible) return <button className="panel-fab" title="Host panel (H)" onClick={p.onToggle}>⚙</button>
   return (
     <div className="panel">
-      <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Host panel <span style={{ opacity: 0.5, fontWeight: 400 }}>(H to hide)</span></div>
+      <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+        <div style={{ fontWeight: 800, fontSize: 16, flex: 1 }}>Host panel <span style={{ opacity: 0.5, fontWeight: 400 }}>(H)</span></div>
+        <button className="panel-min" title="Minimise" onClick={p.onToggle}>—</button>
+      </div>
       {!p.isFullscreen && <button onClick={p.onFullscreen}>⛶ Fullscreen</button>}
       {p.phase === 'lobby' && (
         <div style={{ margin: '6px 0' }}>

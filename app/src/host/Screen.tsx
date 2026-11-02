@@ -72,6 +72,9 @@ interface Internal {
 }
 
 const T = timingFromUrl()
+const GAME_SCALE = 0.895
+const GAME_LEFT = 1920 * (1 - GAME_SCALE)
+const GAME_TOP = (1080 * (1 - GAME_SCALE)) / 2
 const params = new URLSearchParams(location.search)
 let booted = false // StrictMode runs effects twice in dev; boot must run once
 const initialSchedule = loadSchedule()
@@ -81,7 +84,8 @@ export default function Screen() {
     phase: 'boot', gameId: '', roundIdx: -1, kind: 'mash', options: null, presetId: initialSchedule.presetId, schedule: initialSchedule.schedule, players: [], maxPlayers: 120, counts: [0, 0, 0], live: [],
     result: null, steps: [], fin: null, channel: 'CLOSED', lastError: '', resumeRound: null, bots: null, tick: 0,
   })
-  const [panel, setPanel] = useState(true)
+  const [panel, setPanelRaw] = useState(() => { try { return sessionStorage.getItem('pb:panel') === 'open' } catch { return false } })
+  const setPanel = (f: (v: boolean) => boolean) => setPanelRaw((v) => { const n = f(v); try { sessionStorage.setItem('pb:panel', n ? 'open' : 'closed') } catch { /* ignore */ } return n })
   const [admin, setAdmin] = useState(() => { try { return localStorage.getItem('pb:admin') ?? '' } catch { return '' } })
   const [authError, setAuthError] = useState('')
   const [hostsOnly, setHostsOnly] = useState(false)
@@ -375,6 +379,9 @@ export default function Screen() {
         )}
         {snap.phase === 'error' && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 48, color: '#FFB199', textAlign: 'center', padding: 100 }}>{snap.lastError}</div>}
         {snap.phase === 'lobby' && <Lobby joinUrl={joinUrl} players={snap.players} maxPlayers={snap.maxPlayers} resumeRound={snap.resumeRound} />}
+        {/* Game content: uniform scale 0.895 anchored right, so the left ~200px strip holds the QR
+            and the panel button while the stage keeps ≥ 80% of the screen area. */}
+        <div style={{ position: 'absolute', left: GAME_LEFT, top: GAME_TOP, width: 1920, height: 1080, transform: `scale(${GAME_SCALE})`, transformOrigin: 'top left' }}>
         {snap.phase === 'intro' && <Intro kind={snap.kind} roundIdx={snap.roundIdx} total={snap.schedule.length} secondsLeft={secondsLeft} final={snap.roundIdx === snap.schedule.length - 1} />}
         {(snap.phase === 'play' || snap.phase === 'collect') && (snap.kind === 'mash'
           ? <Race rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
@@ -393,18 +400,20 @@ export default function Screen() {
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
         {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={snap.schedule.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}
+        </div>
         {snap.phase !== 'lobby' && snap.phase !== 'boot' && snap.phase !== 'error' && snap.gameId && <CornerQr joinUrl={joinUrl} />}
         {snap.phase === 'lobby' && !fs.full && (
           <button onClick={fs.enter} style={{ position: 'absolute', right: 30, top: 30, padding: '10px 22px', borderRadius: 14, fontSize: 24, fontWeight: 800, background: 'rgba(255,255,255,0.15)', color: '#fff', border: '3px solid rgba(255,255,255,0.3)' }}>⛶ Fullscreen</button>
         )}
       </Stage>
-      <HostPanel
-        visible={panel && snap.phase !== 'auth'} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={snap.schedule.length} players={snap.players.length}
+      {snap.phase !== 'auth' && <HostPanel
+        visible={panel} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={snap.schedule.length} players={snap.players.length}
         channel={snap.channel} rpcMs={avgLatency()} bots={snap.bots} lastError={snap.lastError} gameId={snap.gameId}
         canStart={canStart} startLabel={startLabel} onStart={onStart} onSkip={onSkip} onReset={onReset}
         isFullscreen={fs.full} onFullscreen={fs.enter}
         presets={PRESETS} presetId={snap.presetId} schedule={snap.schedule} onPreset={onPreset}
-      />
+        onToggle={() => setPanel((v) => !v)}
+      />}
     </>
   )
 }

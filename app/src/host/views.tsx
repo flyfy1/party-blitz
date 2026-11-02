@@ -370,12 +370,12 @@ export function CornerQr({ joinUrl }: { joinUrl: string }) {
   useEffect(() => { QRCode.toDataURL(joinUrl, { width: 400, margin: 1, errorCorrectionLevel: 'M' }).then(setQr) }, [joinUrl])
   const host = joinUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
   return (
-    <div className="pop" style={{ position: 'absolute', left: 24, bottom: 24, width: 220, zIndex: 60, textAlign: 'center' }}>
-      <div style={{ background: '#fff', borderRadius: 18, padding: 8 }}>
-        {qr && <img src={qr} alt="QR" style={{ width: 204, height: 204, display: 'block' }} />}
+    <div className="pop" style={{ position: 'absolute', left: 12, top: 12, width: 180, zIndex: 60, textAlign: 'center' }}>
+      <div style={{ background: '#fff', borderRadius: 14, padding: 6 }}>
+        {qr && <img src={qr} alt="QR" style={{ width: 168, height: 168, display: 'block' }} />}
       </div>
-      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 4, textShadow: '0 2px 0 #1B1033' }}>{host}</div>
-      <div style={{ fontSize: 16, opacity: 0.7 }}>Scan to join late</div>
+      <div style={{ fontSize: 17, fontWeight: 800, marginTop: 4, textShadow: '0 2px 0 #1B1033', wordBreak: 'break-all' }}>{host}</div>
+      <div style={{ fontSize: 14, opacity: 0.7 }}>Scan to join</div>
     </div>
   )
 }
