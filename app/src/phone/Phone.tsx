@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import './phone.css'
 import { FACTIONS, KIND_META } from '../shared/factions'
 import { BOARD_SIZE } from '../shared/board'
@@ -58,6 +58,8 @@ export default function Phone() {
       </header>
       {game.final ? (
         <Final final={game.final} game={game} />
+      ) : game.round && game.missedRound ? (
+        <LateWait key={game.round.round_id} game={game} round={game.round} timing={timing} />
       ) : game.round ? (
         <Round key={game.round.round_id} game={game} round={game.round} submit={submit} timing={timing} />
       ) : (
@@ -78,14 +80,38 @@ function Shell({ style, children }: { style: React.CSSProperties; children: Reac
 function Waiting({ game }: { game: PhoneGame }) {
   const fac = FACTIONS[game.faction]
   const total = game.counts[0] + game.counts[1] + game.counts[2]
+  const live = game.gameStatus === 'playing'
   return (
     <div className="ph-center">
       <div className="ph-mascot float">{fac.emoji}</div>
-      <div className="ph-big cn">Team {fac.name}</div>
-      <p className="ph-sub">Waiting for the host…</p>
+      <div className="ph-big cn">{live ? "You're in!" : `Team ${fac.name}`}</div>
+      <p className="ph-sub">{live ? 'Get ready for the next round…' : 'Waiting for the host…'}</p>
       <div className="ph-pill">
         {game.counts[game.faction]} on your team · {total} / {game.maxPlayers} in the room
       </div>
+    </div>
+  )
+}
+
+/** Late joiner: the current round already started before we joined. Count down to the next one. */
+function LateWait({ game, round, timing }: { game: PhoneGame; round: RoundPayload; timing: ReturnType<typeof timingFromUrl> }) {
+  const fac = FACTIONS[game.faction]
+  const nextAt = parseTs(round.ends_at) + timing.collect + timing.result
+  const [secs, setSecs] = useState(() => Math.max(0, Math.ceil((nextAt - now()) / 1000)))
+  useEffect(() => {
+    const id = setInterval(() => setSecs(Math.max(0, Math.ceil((nextAt - now()) / 1000))), 250)
+    return () => clearInterval(id)
+  }, [nextAt])
+  return (
+    <div className="ph-center">
+      <div className="ph-mascot float">{fac.emoji}</div>
+      <div className="ph-big cn pop">You're in!</div>
+      <p className="ph-sub">Team {fac.name} · round {round.round_idx + 1} is already running</p>
+      <div className="ph-countdown pop" key={secs}>
+        {secs > 0 ? secs : '…'}
+      </div>
+      <p className="ph-sub">{secs > 0 ? 'Next round starts in' : 'Get ready for the next round…'}</p>
+      <Positions positions={game.positions} me={game.faction} />
     </div>
   )
 }

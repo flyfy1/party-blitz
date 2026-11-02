@@ -4,6 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { channelName, rpc, supabase } from '../shared/supabase'
 import { getPlayerId } from '../shared/player-id'
 import { isFinalRound } from '../shared/schedule'
+import { now, parseTs } from '../shared/time'
 import type { FinalPayload, JoinResponse, ResultPayload, RoundPayload, StateResponse, Triple } from '../shared/types'
 
 export type PhoneStatus = 'no-game' | 'joining' | 'error' | 'spectator' | 'joined'
@@ -19,6 +20,10 @@ export interface PhoneGame {
   positions: Triple
   gameStatus: 'lobby' | 'playing' | 'finished'
   round: RoundPayload | null
+  /** True when the current round's PLAY had already started when this player joined (late joiner): show a wait screen instead. */
+  missedRound: boolean
+  /** Server time (ms) of this player's first join in this game; persisted per game so a reload mid-round is not a "late join". */
+  joinedAt: number
   result: ResultPayload | null
   final: FinalPayload | null
   error: string | null
@@ -35,15 +40,36 @@ const initial = (gameId: string | null): PhoneGame => ({
   positions: [0, 0, 0],
   gameStatus: 'lobby',
   round: null,
+  missedRound: false,
+  joinedAt: 0,
   result: null,
   final: null,
   error: null,
 })
 
+function loadJoinedAt(gameId: string): number {
+  try {
+    const v = Number(localStorage.getItem(`pb:joined:${gameId}`))
+    if (v > 0) return v
+  } catch {
+    /* ignore */
+  }
+  return 0
+}
+function saveJoinedAt(gameId: string, t: number) {
+  try {
+    localStorage.setItem(`pb:joined:${gameId}`, String(t))
+  } catch {
+    /* ignore */
+  }
+}
+
 function applyRound(g: PhoneGame, p: RoundPayload): PhoneGame {
   if (g.round?.round_id === p.round_id) return g
   if (g.round && p.round_idx < g.round.round_idx) return g
-  return { ...g, round: p, gameStatus: 'playing' }
+  // Joined after this round's PLAY started → cannot take part; wait for the next round instead.
+  const missedRound = g.joinedAt > 0 && parseTs(p.starts_at) < g.joinedAt
+  return { ...g, round: p, missedRound, gameStatus: 'playing' }
 }
 function applyResult(g: PhoneGame, p: ResultPayload): PhoneGame {
   if (g.result && g.result.round_idx >= p.round_idx) return g
@@ -106,7 +132,14 @@ export function usePhoneGame() {
         const r = await rpc<JoinResponse>('join_game', { p_game: gameId, p_player: getPlayerId(gameId) }, { retries: 3, delay: 300 })
         if (cancelled) return
         if (r.full) setGame((g) => ({ ...g, status: 'spectator' }))
-        else setGame((g) => ({ ...g, status: 'joined', faction: r.faction, nickname: r.nickname }))
+        else {
+          let joinedAt = loadJoinedAt(gameId)
+          if (!joinedAt) {
+            joinedAt = now() // server clock, synced by the join_game response
+            saveJoinedAt(gameId, joinedAt)
+          }
+          setGame((g) => ({ ...g, status: 'joined', faction: r.faction, nickname: r.nickname, joinedAt }))
+        }
         poll()
       } catch (e) {
         if (!cancelled) setGame((g) => ({ ...g, status: 'error', error: (e as Error).message }))
