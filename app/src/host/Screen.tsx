@@ -12,12 +12,12 @@ import { RpsStage } from './views/RpsStage'
 import { sfx, unlockSfx } from './sfx'
 import { avgLatency, channelName, rpc, supabase } from '../shared/supabase'
 import { now, parseTs } from '../shared/time'
-import { SCHEDULE, isFinalRound } from '../shared/schedule'
+import { PRESETS, applyPreset, loadSchedule } from './presets'
 import { phaseAt, timingFromUrl } from '../shared/timing'
 import { addMvpPoints, finalResult, scoreRound, type MoveStep } from '../shared/scoring'
 import { minorityExtra, rpsExtra } from '../shared/extras'
 import { pickQuestion } from '../shared/questions'
-import type { FinalPayload, GameState, InputRow, PlayerRow, ResultPayload, RoundPayload, StateResponse, Triple } from '../shared/types'
+import type { FinalPayload, GameState, InputRow, Kind, PlayerRow, ResultPayload, RoundPayload, StateResponse, Triple } from '../shared/types'
 
 type Phase = 'boot' | 'auth' | 'lobby' | 'intro' | 'play' | 'collect' | 'result' | 'final' | 'error'
 
@@ -27,6 +27,8 @@ interface Snap {
   roundIdx: number
   kind: RoundPayload['kind']
   options: unknown
+  presetId: string
+  schedule: Kind[]
   players: (PlayerRow & { joined_at?: string })[]
   maxPlayers: number
   counts: Triple
@@ -60,15 +62,17 @@ interface Internal {
   bots: BotPool | null
   liveTimer: number | null
   lastJoined: string | null
+  schedule: Kind[]
 }
 
 const T = timingFromUrl()
 const params = new URLSearchParams(location.search)
 let booted = false // StrictMode runs effects twice in dev; boot must run once
+const initialSchedule = loadSchedule()
 
 export default function Screen() {
   const [snap, setSnap] = useState<Snap>({
-    phase: 'boot', gameId: '', roundIdx: -1, kind: 'mash', options: null, players: [], maxPlayers: 120, counts: [0, 0, 0], live: [],
+    phase: 'boot', gameId: '', roundIdx: -1, kind: 'mash', options: null, presetId: initialSchedule.presetId, schedule: initialSchedule.schedule, players: [], maxPlayers: 120, counts: [0, 0, 0], live: [],
     result: null, steps: [], fin: null, channel: 'CLOSED', lastError: '', resumeRound: null, bots: null, tick: 0,
   })
   const [panel, setPanel] = useState(true)
@@ -79,7 +83,7 @@ export default function Screen() {
   const S = useRef<Internal>({
     gameId: '', key: '', roundIdx: -1, round: null, positions: [0, 0, 0], mvpPoints: {}, counts: [0, 0, 0], lastLive: [],
     finalizing: false, finalized: false, nextAt: 0, starting: false, retryAt: 0, skip: false, channel: null, bots: null,
-    liveTimer: null, lastJoined: null,
+    liveTimer: null, lastJoined: null, schedule: initialSchedule.schedule,
   }).current
   const phaseRef = useRef<Phase>('boot')
   const patch = (p: Partial<Snap>) => setSnap((s) => ({ ...s, ...p }))
@@ -133,7 +137,7 @@ export default function Screen() {
           if (st.status === 'playing') {
             const last = st.state?.round_idx ?? -1
             S.roundIdx = last
-            patch({ roundIdx: last, resumeRound: last + 1 < SCHEDULE.length ? last + 1 : null })
+            patch({ roundIdx: last, resumeRound: last + 1 < S.schedule.length ? last + 1 : null })
           }
           setPhase('lobby')
         }
@@ -185,14 +189,17 @@ export default function Screen() {
     if (S.starting) return
     S.starting = true
     try {
-      const kind = SCHEDULE[idx]
-      const options = kind === 'minority' ? pickQuestion() : null
+      const kind = S.schedule[idx]
+      const isFinal = idx === S.schedule.length - 1
+      const options: unknown = kind === 'minority' ? pickQuestion()
+        : (kind as string) === 'react' ? { go_at: new Date(now() + T.intro + 3000 + Math.random() * 4000).toISOString() }
+        : null
       const r = await rpc<{ round_id: string; starts_at: string; ends_at: string }>('start_round', {
         p_game: S.gameId, p_key: S.key, p_idx: idx, p_kind: kind, p_options: options, p_intro_ms: T.intro, p_play_ms: T.play,
       }, { retries: 2 })
       // authoritative counts for scoring
       try { const st = await rpc<StateResponse>('get_state', { p_game: S.gameId }); S.counts = st.counts; patch({ counts: st.counts }) } catch { /* keep lobby counts */ }
-      const payload: RoundPayload = { type: 'round', round_idx: idx, round_id: r.round_id, kind, options: options ?? undefined, starts_at: r.starts_at, ends_at: r.ends_at, final: isFinalRound(idx) }
+      const payload: RoundPayload & { total_rounds: number } = { type: 'round', round_idx: idx, round_id: r.round_id, kind, options: options ?? undefined, starts_at: r.starts_at, ends_at: r.ends_at, final: isFinal, total_rounds: S.schedule.length }
       S.round = { id: r.round_id, kind, starts: parseTs(r.starts_at), ends: parseTs(r.ends_at) }
       S.roundIdx = idx
       S.finalized = false; S.finalizing = false; S.skip = false; S.lastLive = []
@@ -211,7 +218,7 @@ export default function Screen() {
     const idx = S.roundIdx, round = S.round
     let rows: InputRow[] = S.lastLive
     try { rows = await rpc<InputRow[]>('round_live', { p_round: round.id, p_key: S.key }, { retries: 2 }) } catch (e) { fail(e) }
-    const res = scoreRound(round.kind, rows, S.counts, S.positions, isFinalRound(idx))
+    const res = scoreRound(round.kind, rows, S.counts, S.positions, idx === S.schedule.length - 1)
     const mvpPoints = addMvpPoints(S.mvpPoints, res.mvp, idx)
     const extra = round.kind === 'minority' ? minorityExtra(rows) : round.kind === 'rps' ? rpsExtra(rows) : undefined
     const payload: ResultPayload = { type: 'result', round_idx: idx, kind: round.kind, ranks: res.ranks, scores: res.scores, moves: res.moves, positions: res.positions, mvp: res.mvp, ...(extra ? { extra } : {}) }
@@ -273,7 +280,7 @@ export default function Screen() {
           setPhase('result')
         } else if (!S.starting && t >= S.retryAt) {
           S.skip = false
-          if (S.roundIdx + 1 < SCHEDULE.length) void startRound(S.roundIdx + 1)
+          if (S.roundIdx + 1 < S.schedule.length) void startRound(S.roundIdx + 1)
           else void finishGame()
         }
       }
@@ -291,6 +298,7 @@ export default function Screen() {
     window.addEventListener('pointerdown', unlock)
     return () => { window.removeEventListener('keydown', on); window.removeEventListener('pointerdown', unlock) }
   }, [])
+  const onPreset = (id: string) => { const r = applyPreset(id); S.schedule = r.schedule; patch({ presetId: r.presetId, schedule: r.schedule }) }
   const onStart = () => { void startRound(snap.resumeRound ?? 0) }
   const onSkip = () => {
     const ph = phaseRef.current
@@ -356,7 +364,7 @@ export default function Screen() {
         )}
         {snap.phase === 'error' && <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', fontSize: 48, color: '#FFB199', textAlign: 'center', padding: 100 }}>{snap.lastError}</div>}
         {snap.phase === 'lobby' && <Lobby joinUrl={joinUrl} players={snap.players} maxPlayers={snap.maxPlayers} resumeRound={snap.resumeRound} />}
-        {snap.phase === 'intro' && <Intro kind={snap.kind} roundIdx={snap.roundIdx} total={SCHEDULE.length} secondsLeft={secondsLeft} final={isFinalRound(snap.roundIdx)} />}
+        {snap.phase === 'intro' && <Intro kind={snap.kind} roundIdx={snap.roundIdx} total={snap.schedule.length} secondsLeft={secondsLeft} final={snap.roundIdx === snap.schedule.length - 1} />}
         {(snap.phase === 'play' || snap.phase === 'collect') && (snap.kind === 'mash'
           ? <Race rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
           : snap.kind === 'stop'
@@ -366,7 +374,7 @@ export default function Screen() {
           : snap.kind === 'rps'
           ? <RpsStage rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
-        {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={SCHEDULE.length} />}
+        {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={snap.schedule.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}
         {snap.phase !== 'lobby' && snap.phase !== 'boot' && snap.phase !== 'error' && snap.gameId && <CornerQr joinUrl={joinUrl} />}
         {snap.phase === 'lobby' && !fs.full && (
@@ -374,10 +382,11 @@ export default function Screen() {
         )}
       </Stage>
       <HostPanel
-        visible={panel} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={SCHEDULE.length} players={snap.players.length}
+        visible={panel} phase={snap.phase} roundIdx={snap.roundIdx} totalRounds={snap.schedule.length} players={snap.players.length}
         channel={snap.channel} rpcMs={avgLatency()} bots={snap.bots} lastError={snap.lastError} gameId={snap.gameId}
         canStart={canStart} startLabel={startLabel} onStart={onStart} onSkip={onSkip} onReset={onReset}
         isFullscreen={fs.full} onFullscreen={fs.enter}
+        presets={PRESETS} presetId={snap.presetId} schedule={snap.schedule} onPreset={onPreset}
       />
     </>
   )

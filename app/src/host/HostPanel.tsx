@@ -18,6 +18,10 @@ export interface PanelProps {
   onReset: () => void
   isFullscreen: boolean
   onFullscreen: () => void
+  presets: { id: string; label: string }[]
+  presetId: string
+  schedule: string[]
+  onPreset: (id: string) => void
 }
 
 export function HostPanel(p: PanelProps) {
@@ -28,6 +32,16 @@ export function HostPanel(p: PanelProps) {
     <div className="panel">
       <div style={{ fontWeight: 800, fontSize: 16, marginBottom: 6 }}>Host panel <span style={{ opacity: 0.5, fontWeight: 400 }}>(H to hide)</span></div>
       {!p.isFullscreen && <button onClick={p.onFullscreen}>⛶ Fullscreen</button>}
+      {p.phase === 'lobby' && (
+        <div style={{ margin: '6px 0' }}>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {p.presets.map((x) => (
+              <button key={x.id} data-role={`preset-${x.id}`} onClick={() => p.onPreset(x.id)} style={{ margin: 0, padding: 6, fontSize: 13, background: x.id === p.presetId ? '#FFD633' : 'rgba(255,255,255,0.15)', color: x.id === p.presetId ? '#1B1033' : '#fff' }}>{x.label}</button>
+            ))}
+          </div>
+          <div style={{ opacity: 0.7, fontSize: 12, marginTop: 4 }}>{p.schedule.length} rounds: {p.schedule.join(' → ')} (last ×2)</div>
+        </div>
+      )}
       <button data-role="start" disabled={!p.canStart} onClick={p.onStart}>{p.startLabel}</button>
       <button onClick={p.onSkip} disabled={p.phase === 'lobby' || p.phase === 'final' || p.phase === 'boot'}>Skip phase</button>
       {confirmReset
