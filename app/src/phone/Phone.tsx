@@ -10,6 +10,7 @@ import { usePhase } from './usePhase'
 import Mash from './Mash'
 import Stop from './Stop'
 import { MinorityGame, RpsGame } from './games'
+import ReactGame from './games/ReactGame'
 import type { MinorityExtra, RpsExtra } from '../shared/extras'
 
 export default function Phone() {
@@ -132,8 +133,8 @@ function Round({
   const meta = KIND_META[round.kind]
   const result = game.result && game.result.round_idx === round.round_idx ? game.result : null
 
-  // Minority / RPS render their own intro, collect and result screens (src/phone/games).
-  if (round.kind === 'minority' || round.kind === 'rps') {
+  // Minority / RPS / Reaction render their own intro, collect and result screens (src/phone/games).
+  if (round.kind === 'minority' || round.kind === 'rps' || round.kind === 'react') {
     const common = {
       phase,
       faction: game.faction as Faction,
@@ -146,6 +147,7 @@ function Round({
       isMvp: !!result?.mvp.some((m) => m.player_id === game.playerId),
     }
     const extra = (result as { extra?: unknown } | null)?.extra ?? null
+    if (round.kind === 'react') return <ReactGame {...common} />
     return round.kind === 'minority' ? (
       <MinorityGame {...common} extra={extra as MinorityExtra | null} />
     ) : (

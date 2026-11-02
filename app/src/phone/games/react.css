@@ -1,0 +1,14 @@
+/* 🟢 Reaction phone screens (self-contained) */
+.rx { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 24px; user-select: none; touch-action: manipulation; z-index: 5; transition: background 80ms linear; }
+.rx-wait { background: #d7263d; animation: rx-breathe 1.6s ease-in-out infinite alternate; }
+.rx-go { background: #19c25c; }
+.rx-early { background: #5b2333; }
+.rx-done { background: var(--fc); }
+.rx-word { font-family: var(--font-cn); font-size: 76px; line-height: 1; color: #fff; text-shadow: 0 6px 0 rgba(0,0,0,.28); letter-spacing: .02em; }
+.rx-go .rx-word { font-size: 110px; }
+.rx-hint { font-weight: 800; font-size: 18px; color: rgba(255,255,255,.92); }
+.rx-ms { font-family: var(--font-num); font-weight: 800; font-size: 72px; line-height: 1; color: #fff; text-shadow: 0 6px 0 rgba(0,0,0,.28); }
+.rx-icon { font-size: 64px; line-height: 1; }
+.rx-pop { animation: rx-pop .45s cubic-bezier(.34,1.56,.64,1) both; }
+@keyframes rx-pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes rx-breathe { from { background: #c41e33; } to { background: #e8334c; } }

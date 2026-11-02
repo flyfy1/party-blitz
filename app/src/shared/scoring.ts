@@ -1,6 +1,7 @@
 // 计分、排名、棋盘移动：全部是纯函数，有单元测试（DESIGN.md §4 §5）。
 import { BOARD_SIZE, SPECIAL_CELLS } from './board'
 import type { FinalPayload, GameState, InputRow, Kind, MvpEntry, Triple } from './types'
+import { reactMvp, reactScores } from './react'
 
 const EMPTY: Triple = [0, 0, 0]
 
@@ -22,6 +23,8 @@ export function factionScores(kind: Kind, inputs: InputRow[], counts: Triple): T
       out[f] = rows.filter((r) => minority.has(Math.round(r.value))).length / n
     } else if (kind === 'rps') {
       out[f] = rpsScores(inputs, counts)[f]
+    } else if (kind === 'react') {
+      out[f] = reactScores(inputs, counts)[f]
     }
   }
   return out.map((v) => round4(v)) as Triple
@@ -114,6 +117,7 @@ export function advance(positions: Triple, moves: Triple): { positions: Triple; 
 
 /** 本轮 MVP 前三 */
 export function mvpOf(kind: Kind, inputs: InputRow[]): MvpEntry[] {
+  if (kind === 'react') return reactMvp(inputs)
   let rows = [...inputs]
   const byTime = (a: InputRow, b: InputRow) => Date.parse(a.first_at) - Date.parse(b.first_at)
   if (kind === 'mash') rows.sort((a, b) => b.value - a.value || byTime(a, b))

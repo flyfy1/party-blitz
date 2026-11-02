@@ -1,6 +1,6 @@
 // 大屏 ↔ 手机 的契约（DESIGN.md §7）。两边都只 import 这里的类型，不互相 import。
 
-export type Kind = 'mash' | 'stop' | 'minority' | 'rps'
+export type Kind = 'mash' | 'stop' | 'minority' | 'rps' | 'react'
 export type Faction = 0 | 1 | 2
 export type Triple = [number, number, number]
 
