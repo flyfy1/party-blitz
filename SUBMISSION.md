@@ -1,5 +1,7 @@
 # Party Blitz — hackathon submission
 
+> **Status 20:40:** final gate passed on the deployed build, all 7 mini-game kinds, 0 errors.
+
 Copy the sections below into the submission form.
 
 ## Title
