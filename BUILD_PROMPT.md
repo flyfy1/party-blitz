@@ -7,6 +7,7 @@
 **技术栈**：Vite + React + TypeScript，`@supabase/supabase-js`，GSAP，canvas-confetti，qrcode，vitest。**不装路由库**：单入口，`location.search` 里有 `screen=1` 就渲染大屏，否则渲染手机端。手机地址 `/?g=<game_id>`，大屏地址 `/?screen=1&g=<game_id>&key=<host_key>`。环境变量 `VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY` 已经写在 `.env` 里，部署方式是本地 `npm run build` 后把 `dist/` 推上去。
 
 **必须遵守的约束**（详见 DESIGN.md §0、§6、§7）：
+- **所有界面文字一律英文**（按钮、大字、提示、随机名字、主持人面板、错误信息）。阵营叫 Lava / Ocean / Forest，动词大字是 "MASH!" / "STOP IN THE MIDDLE!" / "PICK THE MINORITY!" / "THROW!"
 - 不使用 Supabase Auth。玩家 id 是存在 localStorage 里的 uuid（读写 `try/catch`）
 - 名字由 `join_game` 在服务端随机生成（形容词 + 食物 + `#两位数`），客户端不传名字
 - 手机端只调用 RPC，只订阅 `game:{id}` 的 Broadcast；**不发送 Broadcast，也不订阅 Postgres Changes**

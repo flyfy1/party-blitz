@@ -14,6 +14,7 @@
 | 全场共用场馆 WiFi，出口是同一个 IP；Supabase 匿名登录每个 IP 每小时只有 30 次（已查文档） | **不用 Supabase Auth**。玩家身份用 `localStorage` 里的 uuid（读写要 `try/catch`，失败就退化成内存变量） |
 | 名字会显示在大屏上 | 名字**由服务端在 `join_game` 里随机生成**（形容词 + 食物 + 两位数编号），客户端不能传名字。没有"换一个"按钮 |
 | 节奏要快 | 每轮固定 15 秒，自动推进。所有计时以**服务端时间戳**为准，大屏和手机用同一个 `time.ts` |
+| 现场是国际活动 | **所有界面文字一律英文**（按钮、动词大字、名字、提示、主持人面板）。本文档里的中文描述只是给开发者看的，例如「狂点！」实现为 "MASH!"、「停在中间！」为 "STOP IN THE MIDDLE!"、「选人少的！」为 "PICK THE MINORITY!"、「出拳！」为 "THROW!"；阵营名 Lava / Ocean / Forest；随机名字用英文形容词 + 食物，如 "Brave Durian #37" |
 | 前端是纯静态文件，部署到哪都行（Vercel / gh-pages / Pi） | **单入口、不装路由库、用查询参数区分页面**：`/?g=<game_id>` 手机，`/?screen=1&g=<game_id>&key=<host_key>` 大屏。本地 `npm run build` 把 `.env` 打进包里，再把 `dist/` 推上去，不依赖托管方的环境变量和 rewrite |
 
 ---
