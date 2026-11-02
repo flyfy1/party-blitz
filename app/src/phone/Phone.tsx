@@ -3,11 +3,14 @@ import './phone.css'
 import { FACTIONS, KIND_META } from '../shared/factions'
 import { BOARD_SIZE } from '../shared/board'
 import { timingFromUrl } from '../shared/timing'
-import type { FinalPayload, ResultPayload, RoundPayload, Triple } from '../shared/types'
+import { now, parseTs } from '../shared/time'
+import type { Faction, FinalPayload, ResultPayload, RoundPayload, Triple } from '../shared/types'
 import { usePhoneGame, type PhoneGame } from './usePhoneGame'
 import { usePhase } from './usePhase'
 import Mash from './Mash'
 import Stop from './Stop'
+import { MinorityGame, RpsGame } from './games'
+import type { MinorityExtra, RpsExtra } from '../shared/extras'
 
 export default function Phone() {
   const { game, submit, retry } = usePhoneGame()
@@ -103,6 +106,27 @@ function Round({
   const meta = KIND_META[round.kind]
   const result = game.result && game.result.round_idx === round.round_idx ? game.result : null
 
+  // Minority / RPS render their own intro, collect and result screens (src/phone/games).
+  if (round.kind === 'minority' || round.kind === 'rps') {
+    const common = {
+      phase,
+      faction: game.faction as Faction,
+      startsAt: parseTs(round.starts_at),
+      endsAt: parseTs(round.ends_at),
+      now,
+      options: round.options,
+      onSubmit: (v: number) => submit(round.round_id, v),
+      result,
+      isMvp: !!result?.mvp.some((m) => m.player_id === game.playerId),
+    }
+    const extra = (result as { extra?: unknown } | null)?.extra ?? null
+    return round.kind === 'minority' ? (
+      <MinorityGame {...common} extra={extra as MinorityExtra | null} />
+    ) : (
+      <RpsGame {...common} extra={extra as RpsExtra | null} />
+    )
+  }
+
   if (result) return <Result result={result} game={game} local={local} />
   if (phase === 'intro')
     return (
@@ -129,7 +153,6 @@ function Round({
     <div className="ph-center">
       <div className="ph-icon">{meta.icon}</div>
       <div className="ph-verb cn">{meta.verb}</div>
-      <p className="ph-sub">Coming soon</p>
     </div>
   )
 }
