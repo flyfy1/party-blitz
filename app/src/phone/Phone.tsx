@@ -166,7 +166,12 @@ function Result({ result, game, local }: { result: ResultPayload; game: PhoneGam
         : ''
   return (
     <div className={`ph-center ph-result ${mvpIdx >= 0 ? 'gold' : ''}`}>
-      {mvpIdx >= 0 && <div className="ph-mvp cn pop">TOP 3 IN THE ROOM 🏆 #{mvpIdx + 1}</div>}
+      {mvpIdx >= 0 && (
+        <div className="ph-mvp cn pop">
+          🏆 TOP 3 IN THE ROOM
+          <b>#{mvpIdx + 1}</b>
+        </div>
+      )}
       <div className="ph-own pop">{own}</div>
       <div className="ph-big cn pop">Your faction finished {rankWord}</div>
       <div className="ph-pill">
