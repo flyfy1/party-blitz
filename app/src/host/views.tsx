@@ -316,3 +316,41 @@ export function FinalView({ fin }: { fin: FinalPayload }) {
     </div>
   )
 }
+
+// ── Stop: dart rain ──────────────────────────────────────────────────────
+
+const hash01 = (s: string) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) } return ((h >>> 0) % 10000) / 10000 }
+
+export function Darts({ rows, counts, secondsLeft, collecting, roundIdx }: { rows: InputRow[]; counts: Triple; secondsLeft: number; collecting: boolean; roundIdx: number }) {
+  const cx = 960, cy = 590, R = 400
+  const shown = rows.slice(0, 300)
+  const best = collecting && rows.length ? rows.reduce((a, b) => (b.value < a.value ? b : a)) : null
+  const total = counts.reduce((a, b) => a + b, 0)
+  const m = KIND_META.stop
+  return (
+    <div style={{ position: 'absolute', inset: 0 }}>
+      <div style={{ position: 'absolute', top: 24, left: 60, fontSize: 44, fontWeight: 800 }}>ROUND {roundIdx + 1} · {m.icon} {m.title}</div>
+      <div style={{ position: 'absolute', top: 24, right: 60, fontSize: 44, opacity: 0.7 }}>{rows.length} / {total} thrown</div>
+      <div style={{ position: 'absolute', top: 80, left: 0, right: 0, textAlign: 'center' }}>
+        <span key={secondsLeft} className={`counter pop ${secondsLeft <= 3 ? 'pulse' : ''}`} style={{ fontSize: 150, color: secondsLeft <= 3 ? '#FFD633' : '#fff' }}>{collecting ? '' : secondsLeft}</span>
+      </div>
+      {[1, 0.8, 0.6, 0.4, 0.2, 0.07].map((k, i) => (
+        <div key={k} className="pop" style={{ position: 'absolute', left: cx - R * k, top: cy - R * k, width: 2 * R * k, height: 2 * R * k, borderRadius: '50%', background: i % 2 ? '#F8F1E7' : '#E5484D', border: '4px solid #1B1033', animationDelay: `${i * 0.06}s` }} />
+      ))}
+      {shown.map((r) => {
+        const a = hash01(r.player_id) * Math.PI * 2
+        const rad = Math.min(1, Math.max(0, r.value)) * R
+        const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad
+        const isBest = best?.player_id === r.player_id
+        const near = r.value < 0.12 || isBest
+        return (
+          <div key={r.player_id} className="pop" style={{ position: 'absolute', left: x, top: y, transform: 'translate(-50%, -50%)', zIndex: isBest ? 40 : near ? 30 : 20 }}>
+            <div style={{ width: isBest ? 54 : 26, height: isBest ? 54 : 26, borderRadius: '50%', background: colorOf(r.faction), border: '4px solid #1B1033', boxShadow: '0 4px 0 rgba(0,0,0,0.4)', margin: '0 auto' }} />
+            {near && <div style={{ position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)', whiteSpace: 'nowrap', fontSize: isBest ? 44 : 22, fontWeight: 800, color: '#fff', textShadow: '0 2px 0 #1B1033, 0 0 8px #1B1033' }}>{r.nickname}{isBest ? ` · ${(r.value * 100).toFixed(0)}% off` : ''}</div>}
+          </div>
+        )
+      })}
+      {collecting && <BigWord text="TIME'S UP!" />}
+    </div>
+  )
+}

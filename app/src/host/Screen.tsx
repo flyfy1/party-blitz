@@ -6,7 +6,8 @@ import './host.css'
 import { Stage } from './Stage'
 import { HostPanel } from './HostPanel'
 import { BotPool } from './bots'
-import { FinalView, Intro, LiveBars, Lobby, Race, ResultView } from './views'
+import { Darts, FinalView, Intro, LiveBars, Lobby, Race, ResultView } from './views'
+import { sfx, unlockSfx } from './sfx'
 import { avgLatency, channelName, rpc, supabase } from '../shared/supabase'
 import { now, parseTs } from '../shared/time'
 import { SCHEDULE, isFinalRound } from '../shared/schedule'
@@ -217,6 +218,7 @@ export default function Screen() {
       S.round = null
       patch({ fin })
       setPhase('final')
+      sfx.win()
     } finally { S.starting = false }
   }
 
@@ -245,7 +247,7 @@ export default function Screen() {
         if (!S.finalized) {
           const p = S.skip ? 'done' : phaseAt(t, S.round.starts, S.round.ends, T)
           if (p === 'intro') setPhase('intro')
-          else if (p === 'play') { setPhase('play'); startLive() }
+          else if (p === 'play') { if (phaseRef.current !== 'play') sfx.horn(); setPhase('play'); startLive() }
           else if (p === 'collect') { setPhase('collect') }
           else if (!S.finalizing) { setPhase('collect'); void finalize() }
         } else if (t < S.nextAt && !S.skip) {
@@ -264,9 +266,11 @@ export default function Screen() {
 
   // ── host panel actions + H key ──
   useEffect(() => {
-    const on = (e: KeyboardEvent) => { if (e.key === 'h' || e.key === 'H') setPanel((v) => !v) }
+    const on = (e: KeyboardEvent) => { unlockSfx(); if (e.key === 'h' || e.key === 'H') setPanel((v) => !v) }
+    const unlock = () => unlockSfx()
     window.addEventListener('keydown', on)
-    return () => window.removeEventListener('keydown', on)
+    window.addEventListener('pointerdown', unlock)
+    return () => { window.removeEventListener('keydown', on); window.removeEventListener('pointerdown', unlock) }
   }, [])
   const onStart = () => { void startRound(snap.resumeRound ?? 0) }
   const onSkip = () => {
@@ -292,6 +296,11 @@ export default function Screen() {
     if (snap.phase === 'intro') return Math.max(1, Math.ceil((S.round.starts - t) / 1000))
     return Math.max(0, Math.ceil((S.round.ends - t) / 1000))
   })()
+  const lastTickSec = useRef(-1)
+  useEffect(() => {
+    if (snap.phase === 'intro' && secondsLeft !== lastTickSec.current) { lastTickSec.current = secondsLeft; sfx.tick() }
+    if (snap.phase !== 'intro') lastTickSec.current = -1
+  }, [snap.phase, secondsLeft])
   const canStart = snap.phase === 'lobby' && snap.channel === 'SUBSCRIBED' && !!snap.gameId
   const startLabel = snap.phase !== 'lobby' ? 'Game running' : snap.channel !== 'SUBSCRIBED' ? `Waiting for channel (${snap.channel})`
     : snap.resumeRound !== null ? `Continue: round ${snap.resumeRound + 1}` : 'Start game'
@@ -305,6 +314,8 @@ export default function Screen() {
         {snap.phase === 'intro' && <Intro kind={snap.kind} roundIdx={snap.roundIdx} total={SCHEDULE.length} secondsLeft={secondsLeft} final={isFinalRound(snap.roundIdx)} />}
         {(snap.phase === 'play' || snap.phase === 'collect') && (snap.kind === 'mash'
           ? <Race rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
+          : snap.kind === 'stop'
+          ? <Darts rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />
           : <LiveBars kind={snap.kind} rows={snap.live} counts={snap.counts} secondsLeft={secondsLeft} collecting={snap.phase === 'collect'} roundIdx={snap.roundIdx} />)}
         {snap.phase === 'result' && snap.result && <ResultView key={snap.result.round_idx} result={snap.result} steps={snap.steps} total={SCHEDULE.length} />}
         {snap.phase === 'final' && snap.fin && <FinalView fin={snap.fin} />}
