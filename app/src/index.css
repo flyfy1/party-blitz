@@ -1,0 +1,23 @@
+:root {
+  --bg: #1B1033;
+  --f0: #FF4D3D; --f0l: #FFB199; --f0d: #8A1A10;
+  --f1: #2F7BFF; --f1l: #9CC3FF; --f1d: #0F2E73;
+  --f2: #22C55E; --f2l: #A7F3C0; --f2d: #0E5A2B;
+  --font-cn: 'ZCOOL KuaiLe', 'PingFang SC', 'Noto Sans SC', sans-serif;
+  --font-num: 'Baloo 2', 'ZCOOL KuaiLe', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; width: 100%; }
+body {
+  background: var(--bg);
+  color: #fff;
+  font-family: var(--font-num), var(--font-cn);
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+.cn { font-family: var(--font-cn); }
+button { font: inherit; border: none; cursor: pointer; }
