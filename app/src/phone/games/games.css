@@ -1,0 +1,131 @@
+/* 手机端小游戏共用样式（少数派、猜拳）。全屏阵营色背景由父级设置 --fc / --fcl / --fcd。 */
+.pg {
+  --fc: #FF4D3D; --fcl: #FFB199; --fcd: #8A1A10;
+  position: relative;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--fc);
+  color: #fff;
+  overflow: hidden;
+  padding: max(10px, env(safe-area-inset-top)) 14px max(14px, env(safe-area-inset-bottom));
+  gap: 10px;
+}
+.pg * { -webkit-tap-highlight-color: transparent; }
+
+/* ── 顶部倒计时条 ── */
+.pg-clock { position: relative; height: 14px; border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; flex: none; }
+.pg-clock > i { position: absolute; inset: 0; right: auto; width: 100%; border-radius: 999px; background: #fff; transform-origin: left center; transition: background .2s; }
+.pg-clock.urgent > i { background: #FFE14D; animation: pg-blink .25s steps(2) infinite; }
+.pg-clock-num { position: absolute; right: 0; top: -26px; font-weight: 800; font-size: 22px; line-height: 1; font-variant-numeric: tabular-nums; }
+.pg-clockwrap { position: relative; padding-top: 26px; flex: none; }
+@keyframes pg-blink { to { opacity: .55; } }
+
+/* ── 标题区 ── */
+.pg-title { text-align: center; flex: none; }
+.pg-title h2 { font-size: clamp(24px, 7vw, 34px); line-height: 1.1; font-weight: 800; text-shadow: 0 3px 0 rgba(0,0,0,.25); }
+.pg-title p { opacity: .9; font-size: 15px; margin-top: 4px; font-weight: 700; }
+
+/* ── 三个大按钮 ── */
+.pg-choices { flex: 1; display: grid; grid-template-rows: repeat(3, 1fr); gap: 10px; min-height: 0; }
+.pg-choice {
+  position: relative;
+  display: flex; align-items: center; justify-content: flex-start; gap: 14px;
+  padding: 0 18px;
+  border-radius: 24px;
+  background: rgba(255,255,255,.18);
+  border: 4px solid rgba(255,255,255,.55);
+  box-shadow: 0 6px 0 rgba(0,0,0,.25);
+  color: #fff;
+  font-weight: 800;
+  font-size: clamp(22px, 6.5vw, 30px);
+  overflow: hidden;
+  transition: transform .12s ease, opacity .25s ease, background .2s ease, border-color .2s ease, box-shadow .12s ease;
+  touch-action: manipulation;
+}
+.pg-choice .em { font-size: clamp(40px, 12vw, 56px); line-height: 1; filter: drop-shadow(0 3px 0 rgba(0,0,0,.2)); flex: none; }
+.pg-choice .lb { flex: 1; text-align: left; line-height: 1.05; }
+.pg-choice .tag { font-size: 13px; letter-spacing: .08em; padding: 4px 9px; border-radius: 999px; background: #fff; color: var(--fcd); flex: none; }
+.pg-choice:active, .pg-choice.pressed { transform: translateY(5px) scale(.98); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+.pg-choice.picked { background: #fff; color: var(--fcd); border-color: #fff; animation: pg-pop .32s cubic-bezier(.34,1.56,.64,1); }
+.pg-choice.picked .em { animation: pg-wiggle .5s ease; }
+.pg-choice.dim { opacity: .35; transform: scale(.96); box-shadow: none; }
+.pg-choice.locked { pointer-events: none; }
+.pg-choice.row { flex-direction: column; justify-content: center; gap: 6px; padding: 10px; font-size: 17px; }
+.pg-choice.row .em { font-size: clamp(44px, 16vw, 72px); }
+.pg-choices.horizontal { grid-template-rows: 1fr; grid-template-columns: repeat(3, 1fr); }
+@keyframes pg-pop { 0% { transform: scale(.92); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+@keyframes pg-wiggle { 0%,100% { transform: rotate(0); } 25% { transform: rotate(-14deg) scale(1.15); } 75% { transform: rotate(12deg) scale(1.15); } }
+
+/* 波纹 */
+.pg-ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,.55); transform: translate(-50%,-50%) scale(0); animation: pg-ripple .5s ease-out forwards; pointer-events: none; }
+@keyframes pg-ripple { to { transform: translate(-50%,-50%) scale(1); opacity: 0; } }
+
+/* ── 底部状态行 ── */
+.pg-foot { flex: none; min-height: 48px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 800; font-size: 18px; border-radius: 16px; background: rgba(0,0,0,.22); padding: 10px 14px; }
+.pg-foot.hot { background: #FFE14D; color: #3b2a00; animation: pg-pulse .6s ease-in-out infinite alternate; }
+@keyframes pg-pulse { from { transform: scale(1); } to { transform: scale(1.03); } }
+
+/* ── 全屏大字（INTRO / 收卷）── */
+.pg-big { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 24px; gap: 10px; background: var(--fc); z-index: 5; }
+.pg-big .icon { font-size: 96px; line-height: 1; animation: pg-bounce-in .5s cubic-bezier(.34,1.56,.64,1); }
+.pg-big h1 { font-size: clamp(36px, 11vw, 56px); line-height: 1; font-weight: 800; text-shadow: 0 4px 0 rgba(0,0,0,.25); animation: pg-bounce-in .45s .08s cubic-bezier(.34,1.56,.64,1) both; }
+.pg-big p { font-size: 18px; font-weight: 700; opacity: .92; animation: pg-fade .4s .25s both; max-width: 320px; }
+.pg-big .stripes { position: absolute; inset: -50%; background: repeating-linear-gradient(-30deg, rgba(255,255,255,.08) 0 40px, transparent 40px 80px); animation: pg-slide 1.2s linear infinite; pointer-events: none; }
+@keyframes pg-slide { to { transform: translateX(92px); } }
+@keyframes pg-bounce-in { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
+@keyframes pg-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.pg-big .dots { display: flex; gap: 8px; margin-top: 8px; }
+.pg-big .dots i { width: 12px; height: 12px; border-radius: 50%; background: #fff; animation: pg-dot 1s ease-in-out infinite; }
+.pg-big .dots i:nth-child(2) { animation-delay: .15s; } .pg-big .dots i:nth-child(3) { animation-delay: .3s; }
+@keyframes pg-dot { 0%,100% { transform: translateY(0); opacity: .5; } 50% { transform: translateY(-8px); opacity: 1; } }
+
+/* ── 结果页 ── */
+.pg-result { position: absolute; inset: 0; z-index: 6; background: var(--fc); display: flex; flex-direction: column; padding: max(14px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); gap: 12px; overflow: hidden; }
+.pg-result.gold { background: linear-gradient(180deg, #FFD54A, #F59E0B); color: #4a2d00; animation: pg-goldflash .6s ease; }
+@keyframes pg-goldflash { 0% { filter: brightness(2.2); } 100% { filter: none; } }
+.pg-headline { text-align: center; flex: none; animation: pg-bounce-in .5s cubic-bezier(.34,1.56,.64,1); }
+.pg-headline .icon { font-size: 64px; line-height: 1; }
+.pg-headline h1 { font-size: clamp(30px, 9vw, 44px); line-height: 1.05; font-weight: 800; text-shadow: 0 3px 0 rgba(0,0,0,.2); margin-top: 6px; }
+.pg-result.gold .pg-headline h1 { text-shadow: 0 3px 0 rgba(255,255,255,.5); }
+.pg-headline p { font-weight: 700; opacity: .9; margin-top: 4px; font-size: 16px; }
+
+/* 少数派揭晓：三根柱子 */
+.pg-bars { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: end; min-height: 160px; padding-top: 28px; }
+.pg-bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; position: relative; }
+.pg-bar .col { width: 100%; border-radius: 16px 16px 8px 8px; background: rgba(255,255,255,.35); transform-origin: bottom; animation: pg-grow .7s cubic-bezier(.2,.9,.3,1.2) both; position: relative; min-height: 10px; }
+.pg-bar.rare .col { background: #fff; box-shadow: 0 0 0 4px rgba(255,255,255,.45), 0 8px 24px rgba(0,0,0,.25); }
+.pg-bar .n { position: absolute; top: -26px; left: 0; right: 0; text-align: center; font-weight: 800; font-size: 20px; animation: pg-fade .3s .6s both; }
+.pg-bar .em { font-size: 36px; line-height: 1; }
+.pg-bar .lb { font-size: 13px; font-weight: 800; text-align: center; line-height: 1.1; opacity: .95; }
+.pg-bar .crown { position: absolute; top: -56px; left: 50%; transform: translateX(-50%); font-size: 28px; animation: pg-bounce-in .5s .8s both cubic-bezier(.34,1.56,.64,1); }
+.pg-bar .me { position: absolute; bottom: 100%; margin-bottom: 4px; background: rgba(0,0,0,.35); font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 3px 8px; border-radius: 999px; }
+.pg-result.gold .pg-bar .col { background: rgba(255,255,255,.55); }
+.pg-result.gold .pg-bar.rare .col { background: #fff; }
+@keyframes pg-grow { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+/* 猜拳揭晓：三只手 */
+.pg-hands { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-items: center; min-height: 170px; }
+.pg-hand { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; animation: pg-bounce-in .5s cubic-bezier(.34,1.56,.64,1) both; }
+.pg-hand:nth-child(2) { animation-delay: .12s; } .pg-hand:nth-child(3) { animation-delay: .24s; }
+.pg-hand .fist { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; font-size: 54px; background: var(--hc); border: 5px solid #fff; box-shadow: 0 6px 0 rgba(0,0,0,.25); transition: transform .4s cubic-bezier(.34,1.56,.64,1); }
+.pg-hand.win .fist { transform: scale(1.18); box-shadow: 0 0 0 6px rgba(255,255,255,.4), 0 10px 24px rgba(0,0,0,.3); }
+.pg-hand.lose .fist { transform: scale(.78) rotate(-12deg); filter: saturate(.6) brightness(.8); }
+.pg-hand.lose .fist i { display: inline-block; transform: scaleY(.6); transition: transform .4s .4s; }
+.pg-hand .nm { font-weight: 800; font-size: 16px; }
+.pg-hand .sc { font-size: 13px; font-weight: 800; padding: 3px 9px; border-radius: 999px; background: rgba(0,0,0,.3); animation: pg-fade .3s .7s both; }
+.pg-hand.win .sc { background: #fff; color: #222; }
+.pg-hand .me { font-size: 11px; letter-spacing: .08em; font-weight: 800; opacity: .9; }
+.pg-matchups { text-align: center; font-weight: 800; font-size: 15px; opacity: .95; line-height: 1.5; animation: pg-fade .4s .9s both; }
+
+/* 阵营名次条 */
+.pg-rank { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: rgba(0,0,0,.25); border-radius: 18px; padding: 12px 16px; font-weight: 800; animation: pg-fade .4s 1s both; }
+.pg-result.gold .pg-rank { background: rgba(255,255,255,.45); }
+.pg-rank .pos { font-size: 34px; line-height: 1; }
+.pg-rank .txt { flex: 1; font-size: 16px; line-height: 1.2; }
+.pg-rank .mv { font-size: 22px; }
+.pg-mvp { text-align: center; font-weight: 800; font-size: 22px; letter-spacing: .04em; animation: pg-pulse .5s ease-in-out infinite alternate; }
+
+/* 猜拳：最后 3 秒遮住提示 */
+.pg-hidden-note { font-size: 13px; opacity: .9; font-weight: 700; }
