@@ -1,0 +1,44 @@
+/* Big-screen stage views for Minority and RPS (1920×1080 stage coordinates). */
+
+/* ── shared header bits ── */
+.st-head { position: absolute; top: 24px; left: 60px; font-size: 44px; font-weight: 800; }
+.st-head-r { position: absolute; top: 24px; right: 60px; font-size: 44px; opacity: 0.7; }
+.st-counter { position: absolute; top: 80px; left: 0; right: 0; text-align: center; }
+.st-word { position: absolute; left: 0; right: 0; text-align: center; font-size: 110px; font-weight: 800; line-height: 1; color: #fff; text-shadow: 0 10px 0 rgba(0,0,0,0.4); -webkit-text-stroke: 5px #1B1033; paint-order: stroke fill; pointer-events: none; z-index: 40; }
+
+/* ── Minority: tubes ── */
+.mn-q { position: absolute; top: 236px; left: 0; right: 0; text-align: center; font-size: 72px; font-weight: 800; text-shadow: 0 6px 0 rgba(0,0,0,0.35); }
+.mn-tubes { position: absolute; left: 0; right: 0; top: 340px; display: flex; justify-content: center; gap: 110px; }
+.mn-tube { position: relative; width: 380px; }
+.mn-glass { position: relative; height: 540px; border-radius: 40px 40px 70px 70px; background: linear-gradient(90deg, rgba(255,255,255,0.10), rgba(255,255,255,0.22) 30%, rgba(255,255,255,0.06) 70%, rgba(255,255,255,0.16)); border: 6px solid rgba(255,255,255,0.45); border-top-color: rgba(255,255,255,0.25); overflow: hidden; box-shadow: inset 0 -30px 60px rgba(0,0,0,0.25), 0 20px 50px rgba(0,0,0,0.35); transition: box-shadow 0.4s, transform 0.4s, opacity 0.4s; }
+.mn-tube.rare .mn-glass { box-shadow: 0 0 0 10px rgba(255, 214, 51, 0.55), 0 0 90px rgba(255, 214, 51, 0.8), inset 0 -30px 60px rgba(0,0,0,0.25); transform: scale(1.06); }
+.mn-tube.dim .mn-glass { opacity: 0.45; transform: scale(0.96); }
+.mn-ball { position: absolute; border-radius: 50%; box-shadow: inset -6px -8px 0 rgba(0,0,0,0.22), inset 5px 6px 0 rgba(255,255,255,0.35); animation: mn-drop 0.55s cubic-bezier(0.3, 1.35, 0.5, 1) both; }
+@keyframes mn-drop { 0% { transform: translateY(-640px) scale(0.6); } 70% { transform: translateY(0) scale(1.05, 0.9); } 100% { transform: translateY(0) scale(1); } }
+.mn-label { margin-top: 18px; text-align: center; font-size: 46px; font-weight: 800; line-height: 1.1; }
+.mn-label .em { font-size: 90px; line-height: 1; display: block; margin-bottom: 4px; filter: drop-shadow(0 8px 0 rgba(0,0,0,0.35)); }
+.mn-count { position: absolute; top: 18px; left: 0; right: 0; text-align: center; font-size: 110px; font-weight: 800; line-height: 1; text-shadow: 0 8px 0 rgba(0,0,0,0.4); }
+.mn-count.hidden-q { opacity: 0.35; font-size: 140px; }
+
+/* ── RPS: vote columns ── */
+.rp-cols { position: absolute; left: 60px; right: 60px; top: 250px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; }
+.rp-col { position: relative; height: 740px; border-radius: 40px; padding: 28px 32px; overflow: hidden; border: 6px solid rgba(255,255,255,0.18); background: rgba(0,0,0,0.3); }
+.rp-col h3 { font-size: 56px; font-weight: 800; margin-bottom: 16px; line-height: 1; }
+.rp-col h3 small { font-size: 30px; opacity: 0.7; margin-left: 14px; font-weight: 700; }
+.rp-row { display: flex; align-items: center; gap: 18px; height: 120px; margin-top: 14px; border-radius: 26px; padding: 0 18px; background: rgba(255,255,255,0.06); transition: background 0.3s, transform 0.3s; }
+.rp-row.lead { background: rgba(255,255,255,0.18); transform: scale(1.03); }
+.rp-row .em { font-size: 84px; line-height: 1; width: 100px; text-align: center; filter: drop-shadow(0 6px 0 rgba(0,0,0,0.35)); }
+.rp-row .bar { flex: 1; height: 44px; border-radius: 22px; background: rgba(0,0,0,0.35); overflow: hidden; }
+.rp-row .bar > i { display: block; height: 100%; border-radius: 22px; transition: width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.rp-row .n { width: 90px; text-align: right; font-size: 48px; font-weight: 800; }
+.rp-cover { position: absolute; inset: -6px; display: grid; place-items: center; text-align: center; background: repeating-linear-gradient(135deg, #2a1f4d 0 60px, #1B1033 60px 120px); z-index: 5; animation: rp-cover-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.rp-cover .eye { font-size: 170px; line-height: 1; }
+.rp-cover .t { font-size: 54px; font-weight: 800; letter-spacing: 4px; margin-top: 10px; }
+@keyframes rp-cover-in { from { transform: translateY(-110%); } to { transform: translateY(0); } }
+
+/* ── RPS: fist clash (collect) ── */
+.rp-clash { position: absolute; inset: 0; z-index: 30; }
+.rp-fist { position: absolute; top: 50%; left: 50%; width: 360px; height: 360px; margin: -180px 0 0 -180px; border-radius: 50%; display: grid; place-items: center; border: 14px solid #fff; box-shadow: 0 24px 0 rgba(0,0,0,0.4); font-size: 220px; line-height: 1; will-change: transform; }
+.rp-fist .nm { position: absolute; bottom: -84px; left: 0; right: 0; text-align: center; font-size: 48px; font-weight: 800; text-shadow: 0 4px 0 rgba(0,0,0,0.4); }
+.rp-outcome { position: absolute; left: 0; right: 0; top: 70px; text-align: center; font-size: 120px; font-weight: 800; line-height: 1; text-shadow: 0 10px 0 rgba(0,0,0,0.4); -webkit-text-stroke: 5px #1B1033; paint-order: stroke fill; }
+.rp-outcome small { display: block; font-size: 56px; margin-top: 18px; -webkit-text-stroke: 0; }

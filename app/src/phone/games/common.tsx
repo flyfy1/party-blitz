@@ -57,7 +57,7 @@ export function Clock({ startsAt, endsAt, now, active }: { startsAt: number; end
 export function Intro({ icon, verb, hint }: { icon: string; verb: string; hint: string }) {
   return (
     <div className="pg-big">
-      <div className="stripes" />
+      <div className="pg-stripes" />
       <div className="icon">{icon}</div>
       <h1>{verb}</h1>
       <p>{hint}</p>

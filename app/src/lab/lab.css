@@ -13,3 +13,9 @@
 @media (min-width: 700px) {
   .lab-phone { width: 390px; height: min(820px, 92%); border-radius: 36px; border: 8px solid #333; box-shadow: 0 30px 80px rgba(0,0,0,.6); }
 }
+/* 大屏预览 */
+.lab-stage.with-stage { gap: 16px; padding: 12px; align-items: stretch; }
+.lab-screen { position: relative; flex: 1; min-width: 0; min-height: 0; background: #1B1033; border-radius: 14px; overflow: hidden; border: 3px solid #333; }
+@media (min-width: 700px) {
+  .lab-stage.with-stage .lab-phone { flex: none; align-self: center; }
+}

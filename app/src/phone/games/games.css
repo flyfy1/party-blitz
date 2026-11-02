@@ -72,7 +72,7 @@
 .pg-big .icon { font-size: 96px; line-height: 1; animation: pg-bounce-in .5s cubic-bezier(.34,1.56,.64,1); }
 .pg-big h1 { font-size: clamp(36px, 11vw, 56px); line-height: 1; font-weight: 800; text-shadow: 0 4px 0 rgba(0,0,0,.25); animation: pg-bounce-in .45s .08s cubic-bezier(.34,1.56,.64,1) both; }
 .pg-big p { font-size: 18px; font-weight: 700; opacity: .92; animation: pg-fade .4s .25s both; max-width: 320px; }
-.pg-big .stripes { position: absolute; inset: -50%; background: repeating-linear-gradient(-30deg, rgba(255,255,255,.08) 0 40px, transparent 40px 80px); animation: pg-slide 1.2s linear infinite; pointer-events: none; }
+.pg-big .pg-stripes { position: absolute; inset: -50%; background: repeating-linear-gradient(-30deg, rgba(255,255,255,.08) 0 40px, transparent 40px 80px); animation: pg-slide 1.2s linear infinite; pointer-events: none; }
 @keyframes pg-slide { to { transform: translateX(92px); } }
 @keyframes pg-bounce-in { 0% { transform: scale(.3); opacity: 0; } 70% { transform: scale(1.18); opacity: 1; } 100% { transform: scale(1); } }
 @keyframes pg-fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
