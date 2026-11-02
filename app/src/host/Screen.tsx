@@ -349,7 +349,10 @@ export default function Screen() {
         {snap.phase === 'auth' && (
           <div style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', textAlign: 'center' }}>
             {hostsOnly ? (
-              <div className="title pop" style={{ fontSize: 64, padding: 100 }}>Hosts only. Scan the QR code on stage to play.</div>
+              <div className="pop" style={{ padding: 100 }}>
+                <div className="title" style={{ fontSize: 64 }}>Hosts only. Scan the QR code on stage to play.</div>
+                <button onClick={() => { try { localStorage.removeItem('pb:admin') } catch { /* ignore */ } setAdmin(''); setHostsOnly(false) }} style={{ marginTop: 40, fontSize: 20, background: 'transparent', color: 'rgba(255,255,255,0.45)', textDecoration: 'underline' }}>Host? Try again</button>
+              </div>
             ) : (
               <div className="card pop" style={{ padding: 50, width: 820 }}>
                 <div className="title" style={{ fontSize: 64, marginBottom: 20 }}>PARTY BLITZ ⚡ host</div>
